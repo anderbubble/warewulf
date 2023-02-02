@@ -19,13 +19,14 @@ var (
 		RunE:                  CobraRunE,
 		Args:                  cobra.MinimumNArgs(1),
 	}
-	NodeConf node.NodeConf
-	NetName  string
+	NodeConf   node.NodeConf
+	NetName    string
+	Converters []func()
 )
 
 func init() {
 	NodeConf = node.NewConf()
-	NodeConf.CreateFlags(baseCmd, []string{})
+	Converters = NodeConf.CreateFlags(baseCmd, []string{})
 	baseCmd.PersistentFlags().StringVar(&NetName, "netname", "", "Set network name for network options")
 
 	// register the command line completions
