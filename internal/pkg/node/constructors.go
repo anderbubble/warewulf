@@ -2,7 +2,12 @@ package node
 
 import (
 	"errors"
+<<<<<<< HEAD
 	"os"
+=======
+	"fmt"
+	"io/ioutil"
+>>>>>>> bc600d12 (check the yaml direclty after unmarshalling)
 	"path"
 	"sort"
 	"strings"
@@ -58,6 +63,21 @@ func New() (NodeYaml, error) {
 	err = yaml.Unmarshal(data, &ret)
 	if err != nil {
 		return ret, err
+	}
+	wwlog.Debug("Checking nodes for types")
+	for nodeName, node := range ret.Nodes {
+		err = node.Check()
+		if err != nil {
+			wwlog.Warn("node: %s parsing error: %s", nodeName, err)
+			return ret, err
+		}
+	}
+	for profileName, profile := range ret.NodeProfiles {
+		err = profile.Check()
+		if err != nil {
+			wwlog.Warn("node: %s parsing error: %s", profileName, err)
+			return ret, err
+		}
 	}
 
 	wwlog.Debug("Returning node object")
@@ -128,6 +148,10 @@ func (config *NodeYaml) FindAllNodes() ([]NodeInfo, error) {
 		for keyname, key := range node.Keys {
 			node.Tags[keyname] = key
 			delete(node.Keys, keyname)
+		}
+		err = node.Check()
+		if err != nil {
+			return nil, fmt.Errorf("node: %s check error: %s", nodename, err)
 		}
 		n.SetFrom(node)
 		// only now the netdevs start to exist so that default values can be set
