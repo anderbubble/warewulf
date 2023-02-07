@@ -79,7 +79,7 @@ type NetDevs struct {
 	Prefix  string            `yaml:"prefix,omitempty"`
 	Netmask string            `yaml:"netmask,omitempty" lopt:"netmask" sopt:"M" comment:"Set the networks netmask" type:"IP"`
 	Gateway string            `yaml:"gateway,omitempty" lopt:"gateway" sopt:"G" comment:"Set the node's network device gateway" type:"IP"`
-	MTU     string            `yaml:"mtu,omitempty" lopt:"mtu" comment:"Set the mtu"`
+	MTU     string            `yaml:"mtu,omitempty" lopt:"mtu" comment:"Set the mtu" type:"uint"`
 	Primary string            `yaml:"primary,omitempty" lopt:"primary" comment:"Enable/disable network device as primary (true/false)" type:"bool"`
 	Default string            `yaml:"default,omitempty"` /* backward compatibility */
 	Tags    map[string]string `yaml:"tags,omitempty" lopt:"nettagadd" comment:"network tags"`

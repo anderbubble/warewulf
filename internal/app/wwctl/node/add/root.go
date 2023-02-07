@@ -21,7 +21,7 @@ var (
 	}
 	NodeConf   node.NodeConf
 	NetName    string
-	Converters []func()
+	Converters []func() error
 )
 
 func init() {
