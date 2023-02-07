@@ -2,7 +2,7 @@ package node
 
 import (
 	"fmt"
-	"net/netip"
+	"net"
 	"reflect"
 	"strconv"
 	"strings"
@@ -69,8 +69,13 @@ func checker(value string, valType string) (err error) {
 		_, err = strconv.ParseBool(value)
 		return err
 	case "IP":
-		_, err = netip.ParseAddr(value)
-		return err
+		if addr := net.ParseIP(value); addr == nil {
+			return fmt.Errorf("%s can't be parsed to ip address", value)
+		}
+	case "MAC":
+		if _, err := net.ParseMAC(value); err != nil {
+			return fmt.Errorf("%s can't be parsed to MAC address: %s", value, err)
+		}
 	}
 	return nil
 }
