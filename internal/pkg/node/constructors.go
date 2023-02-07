@@ -2,12 +2,8 @@ package node
 
 import (
 	"errors"
-<<<<<<< HEAD
-	"os"
-=======
 	"fmt"
-	"io/ioutil"
->>>>>>> bc600d12 (check the yaml direclty after unmarshalling)
+	"os"
 	"path"
 	"sort"
 	"strings"
