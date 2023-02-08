@@ -88,23 +88,18 @@ for every node
 */
 func (config *NodeYaml) FindAllNodes() ([]NodeInfo, error) {
 	var ret []NodeInfo
-	/*
-		wwconfig, err := warewulfconf.New()
-		if err != nil {
-			return ret, err
-		}
-	*/
 	var defConf map[string]*NodeConf
 	wwlog.Verbose("Opening defaults from file failed %s\n", DefaultConfig)
 	defData, err := os.ReadFile(DefaultConfig)
 	if err != nil {
 		wwlog.Verbose("Couldn't read DefaultConfig :%s\n", err)
+		wwlog.Verbose("Using building defaults")
+		defData = []byte(FallBackConf)
 	}
 	wwlog.Debug("Unmarshalling default config\n")
 	err = yaml.Unmarshal(defData, &defConf)
 	if err != nil {
 		wwlog.Verbose("Couldn't unmarshall defaults from file :%s\n", err)
-		wwlog.Verbose("Using building defaults")
 		err = yaml.Unmarshal([]byte(FallBackConf), &defConf)
 		if err != nil {
 			wwlog.Warn("Could not get any defaults")
