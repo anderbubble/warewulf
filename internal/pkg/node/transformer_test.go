@@ -1,6 +1,7 @@
 package node
 
 import (
+	"fmt"
 	"reflect"
 	"strconv"
 	"testing"
@@ -15,6 +16,13 @@ nodeprofiles:
     comment: This profile is automatically included for each node
     ipmi:
       username: greg
+  profile2:
+    tags:
+      foo: foo profile2
+    comment: Comment profile2
+    ipmi:
+      tags:
+        foo: foo ipmi profile
 nodes:
   test_node1:
     comment: Node Comment
@@ -26,15 +34,30 @@ nodes:
     discoverable: true
     ipmi:
       username: chris
+    tags:
+      baar: baar node1
   test_node2:
     profiles:
     - default
+    - profile2
     network devices:
       net0:
         netmask: 1.1.1.1
       net1:
         primary: true
-`
+    tags:
+      baar: baar node2
+  test_node3:
+    profiles:
+    - profile2
+    tags:
+      foo: foo node3
+      foobaar: foobaar node3
+    ipmi:
+      ipaddr: 1.1.1.1
+      tags:
+        foo: foo ipmi node3
+  `
 	var ret NodeYaml
 	_ = yaml.Unmarshal([]byte(data), &ret)
 	return ret
@@ -44,12 +67,16 @@ func Test_nodeYaml_SetFrom(t *testing.T) {
 	nodes, _ := c.FindAllNodes()
 	test_node1 := NewInfo()
 	test_node2 := NewInfo()
+	test_node3 := NewInfo()
 	for _, n := range nodes {
 		if n.Id.Get() == "test_node1" {
 			test_node1 = n
 		}
 		if n.Id.Get() == "test_node2" {
 			test_node2 = n
+		}
+		if n.Id.Get() == "test_node3" {
+			test_node3 = n
 		}
 	}
 	getByNametests := []struct {
@@ -84,7 +111,7 @@ func Test_nodeYaml_SetFrom(t *testing.T) {
 	})
 	t.Run("Get() profile comment", func(t *testing.T) {
 		comment := test_node2.Comment.Get()
-		if comment != "This profile is automatically included for each node" {
+		if comment != "Comment profile2" {
 			t.Errorf("Get() returned wrong comment: %s", comment)
 		}
 	})
@@ -154,10 +181,42 @@ func Test_nodeYaml_SetFrom(t *testing.T) {
 			t.Errorf("Get() returned wrong ipmi username: %s", value)
 		}
 	})
-	t.Run("Get() ipmi user from profile", func(t *testing.T) {
+	t.Run("Get() ipmi user from node", func(t *testing.T) {
 		value := test_node1.Ipmi.UserName.Get()
 		if value != "chris" {
 			t.Errorf("Get() returned wrong ipmi username: %s", value)
+		}
+	})
+	t.Run("Get() tag foo from profile, node does not have this tag", func(t *testing.T) {
+		value := test_node2.Tags["foo"].Get()
+		if value != "foo profile2" {
+			t.Errorf("Get() returned wrong tag for foo: %s", value)
+		}
+	})
+	t.Run("Get() tag baar from node, node tag map is not overwritten", func(t *testing.T) {
+		value := test_node2.Tags["baar"].Get()
+		if value != "baar node2" {
+			t.Errorf("Get() returned wrong tag for foo: %s", value)
+		}
+	})
+	t.Run("Get() tag foo from node, tag present in profile", func(t *testing.T) {
+		value := test_node3.Tags["foo"].Get()
+		if value != "foo node3" {
+			t.Errorf("Get() returned wrong tag for foo: %s", value)
+		}
+	})
+	t.Run("Get() tag foobaar from node", func(t *testing.T) {
+		value := test_node3.Tags["foobaar"].Get()
+		if value != "foobaar node3" {
+			t.Errorf("Get() returned wrong tag for foo: %s", value)
+		}
+	})
+	t.Run("Get() ipmitag foo from profile, node does not have this tag", func(t *testing.T) {
+		fmt.Println("ipmi tags", test_node3.Ipmi.Tags)
+		fmt.Println(c.Nodes["test_node3"].Ipmi)
+		value := test_node3.Ipmi.Tags["foo"].Get()
+		if value != "foo ipmi node3" {
+			t.Errorf("Get() returned wrong tag for foo: %s", value)
 		}
 	})
 }
