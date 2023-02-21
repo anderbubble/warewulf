@@ -63,176 +63,249 @@ func createFlags(baseCmd *cobra.Command, excludeList []string,
 	myType reflect.StructField, myVal *reflect.Value) (converters []func() error) {
 	if myType.Tag.Get("lopt") != "" {
 		if myType.Type.Kind() == reflect.String {
-			ptr := myVal.Addr().Interface().(*string)
 			switch myType.Tag.Get("type") {
 			case "uint":
-				converters = append(converters, func() error {
-					if !util.InSlice(GetUnsetVerbs(), *ptr) && *ptr != "" {
-						_, err := strconv.ParseUint(myType.Tag.Get(*ptr), 10, 32)
-						if err != nil {
-							return err
-						}
-					}
-					return nil
-				})
-				if myType.Tag.Get("sopt") != "" {
-					baseCmd.PersistentFlags().StringVarP(ptr,
-						myType.Tag.Get("lopt"),
-						myType.Tag.Get("sopt"),
-						myType.Tag.Get("default"),
-						myType.Tag.Get("comment"))
-				} else {
-					baseCmd.PersistentFlags().StringVar(ptr,
-						myType.Tag.Get("lopt"),
-						myType.Tag.Get("default"),
-						myType.Tag.Get("comment"))
-				}
+				converters = append(converters, createUintFlags(baseCmd, excludeList, myType, myVal))
 			case "bool":
-				/*
-					Can't use the bool var from pflag as we need the UNSET verbs to be passwd correctly
-				*/
-				converters = append(converters, func() error {
-					if !util.InSlice(GetUnsetVerbs(), *ptr) && *ptr != "" {
-						if strings.ToLower(*ptr) != "yes" {
-							*ptr = "true"
-							return nil
-						}
-						if strings.ToLower(*ptr) != "no" {
-							*ptr = "false"
-							return nil
-						}
-						val, err := strconv.ParseBool(*ptr)
-						if err != nil {
-							return fmt.Errorf("commandline option %s needs to be bool", myType.Tag.Get("lopt"))
-						}
-						*ptr = strconv.FormatBool(val)
-					}
-					return nil
-				})
-				if myType.Tag.Get("sopt") != "" {
-					baseCmd.PersistentFlags().StringVarP(ptr,
-						myType.Tag.Get("lopt"),
-						myType.Tag.Get("sopt"),
-						"",
-						myType.Tag.Get("comment"))
-				} else {
-					baseCmd.PersistentFlags().StringVar(ptr,
-						myType.Tag.Get("lopt"),
-						"",
-						myType.Tag.Get("comment"))
-				}
-				baseCmd.PersistentFlags().Lookup(myType.Tag.Get("lopt")).NoOptDefVal = "true"
+				converters = append(converters, createBoolFlags(baseCmd, excludeList, myType, myVal))
 			case "IP":
-				defaultConv := net.ParseIP(myType.Tag.Get("default"))
-				var valueRaw net.IP
-				converters = append(converters, func() error {
-					if valueRaw != nil {
-						// will always get a IP, not a string
-						*ptr = valueRaw.String()
-					}
-					return nil
-				})
-				if myType.Tag.Get("sopt") != "" {
-					baseCmd.PersistentFlags().IPVarP(&valueRaw,
-						myType.Tag.Get("lopt"),
-						myType.Tag.Get("sopt"),
-						defaultConv,
-						myType.Tag.Get("comment"))
-				} else {
-					baseCmd.PersistentFlags().IPVar(&valueRaw,
-						myType.Tag.Get("lopt"),
-						defaultConv,
-						myType.Tag.Get("comment"))
-				}
+				converters = append(converters, createIPFlags(baseCmd, excludeList, myType, myVal))
 			case "IPMask":
-				defaultConv := net.ParseIP(myType.Tag.Get("default")).DefaultMask()
-				var valueRaw net.IPMask
-				converters = append(converters, func() error {
-					if valueRaw != nil {
-						*ptr = valueRaw.String()
-						return nil
-					} else {
-						return fmt.Errorf("could not parse %s to IP", valueRaw.String())
-					}
-				})
-				if myType.Tag.Get("sopt") != "" {
-					baseCmd.PersistentFlags().IPMaskVarP(&valueRaw,
-						myType.Tag.Get("lopt"),
-						myType.Tag.Get("sopt"),
-						defaultConv,
-						myType.Tag.Get("comment"))
-				} else {
-					baseCmd.PersistentFlags().IPMaskVar(&valueRaw,
-						myType.Tag.Get("lopt"),
-						defaultConv,
-						myType.Tag.Get("comment"))
-				}
+				converters = append(converters, createIPMaskFlags(baseCmd, excludeList, myType, myVal))
 			case "MAC":
-				converters = append(converters, func() error {
-					myMac, err := net.ParseMAC(*ptr)
-					if err != nil {
-						return err
-					}
-					*ptr = myMac.String()
-					return nil
-				})
-				if myType.Tag.Get("sopt") != "" {
-					baseCmd.PersistentFlags().StringVarP(ptr,
-						myType.Tag.Get("lopt"),
-						myType.Tag.Get("sopt"),
-						"",
-						myType.Tag.Get("comment"))
-				} else {
-					baseCmd.PersistentFlags().StringVar(ptr,
-						myType.Tag.Get("lopt"),
-						"",
-						myType.Tag.Get("comment"))
-				}
+				converters = append(converters, createMACFlags(baseCmd, excludeList, myType, myVal))
 			default:
-				if myType.Tag.Get("sopt") != "" {
-					baseCmd.PersistentFlags().StringVarP(ptr,
-						myType.Tag.Get("lopt"),
-						myType.Tag.Get("sopt"),
-						myType.Tag.Get("default"),
-						myType.Tag.Get("comment"))
-				} else {
-					baseCmd.PersistentFlags().StringVar(ptr,
-						myType.Tag.Get("lopt"),
-						myType.Tag.Get("default"),
-						myType.Tag.Get("comment"))
-				}
+				createStringFlags(baseCmd, excludeList, myType, myVal)
 			}
 		} else if myType.Type == reflect.TypeOf([]string{}) {
-			ptr := myVal.Addr().Interface().(*[]string)
-			if myType.Tag.Get("sopt") != "" {
-				baseCmd.PersistentFlags().StringSliceVarP(ptr,
-					myType.Tag.Get("lopt"),
-					myType.Tag.Get("sopt"),
-					[]string{myType.Tag.Get("default")},
-					myType.Tag.Get("comment"))
-			} else if !util.InSlice(excludeList, myType.Tag.Get("lopt")) {
-				baseCmd.PersistentFlags().StringSliceVar(ptr,
-					myType.Tag.Get("lopt"),
-					[]string{myType.Tag.Get("default")},
-					myType.Tag.Get("comment"))
-
-			}
+			createStringListFlags(baseCmd, excludeList, myType, myVal)
 		} else if myType.Type == reflect.TypeOf(map[string]string{}) {
-			ptr := myVal.Addr().Interface().(*map[string]string)
-			if myType.Tag.Get("sopt") != "" {
-				baseCmd.PersistentFlags().StringToStringVarP(ptr,
-					myType.Tag.Get("lopt"),
-					myType.Tag.Get("sopt"),
-					map[string]string{}, // empty default!
-					myType.Tag.Get("comment"))
-			} else if !util.InSlice(excludeList, myType.Tag.Get("lopt")) {
-				baseCmd.PersistentFlags().StringToStringVar(ptr,
-					myType.Tag.Get("lopt"),
-					map[string]string{}, // empty default!
-					myType.Tag.Get("comment"))
-
-			}
+			createStringMapFlags(baseCmd, excludeList, myType, myVal)
 		}
 	}
 	return converters
+}
+
+
+func createUintFlags(baseCmd *cobra.Command, excludeList []string,
+	myType reflect.StructField, myVal *reflect.Value) (func() error) {
+	
+	ptr := myVal.Addr().Interface().(*string)
+
+	if myType.Tag.Get("sopt") != "" {
+		baseCmd.PersistentFlags().StringVarP(ptr,
+			myType.Tag.Get("lopt"),
+			myType.Tag.Get("sopt"),
+			myType.Tag.Get("default"),
+			myType.Tag.Get("comment"))
+	} else {
+		baseCmd.PersistentFlags().StringVar(ptr,
+			myType.Tag.Get("lopt"),
+			myType.Tag.Get("default"),
+			myType.Tag.Get("comment"))
+	}
+	
+	return func() error {
+		if !util.InSlice(GetUnsetVerbs(), *ptr) && *ptr != "" {
+			_, err := strconv.ParseUint(myType.Tag.Get(*ptr), 10, 32)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
+
+
+func createBoolFlags(baseCmd *cobra.Command, excludeList []string,
+	/* Can't use the bool var from pflag as we need the UNSET
+	   verbs to be passed correctly */
+	myType reflect.StructField, myVal *reflect.Value) (func() error) {
+
+	ptr := myVal.Addr().Interface().(*string)
+
+	if myType.Tag.Get("sopt") != "" {
+		baseCmd.PersistentFlags().StringVarP(ptr,
+			myType.Tag.Get("lopt"),
+			myType.Tag.Get("sopt"),
+			"",
+			myType.Tag.Get("comment"))
+	} else {
+		baseCmd.PersistentFlags().StringVar(ptr,
+			myType.Tag.Get("lopt"),
+			"",
+			myType.Tag.Get("comment"))
+	}
+	baseCmd.PersistentFlags().Lookup(myType.Tag.Get("lopt")).NoOptDefVal = "true"
+
+	return func() error {
+		if !util.InSlice(GetUnsetVerbs(), *ptr) && *ptr != "" {
+			if strings.ToLower(*ptr) != "yes" {
+				*ptr = "true"
+				return nil
+			}
+			if strings.ToLower(*ptr) != "no" {
+				*ptr = "false"
+				return nil
+			}
+			val, err := strconv.ParseBool(*ptr)
+			if err != nil {
+				return fmt.Errorf("commandline option %s needs to be bool", myType.Tag.Get("lopt"))
+			}
+			*ptr = strconv.FormatBool(val)
+		}
+		return nil
+	}
+}
+
+
+func createIPFlags(baseCmd *cobra.Command, excludeList []string,
+	myType reflect.StructField, myVal *reflect.Value) (func() error) {
+
+	ptr := myVal.Addr().Interface().(*string)
+	var valueRaw net.IP
+
+	defaultConv := net.ParseIP(myType.Tag.Get("default"))
+	if myType.Tag.Get("sopt") != "" {
+		baseCmd.PersistentFlags().IPVarP(&valueRaw,
+			myType.Tag.Get("lopt"),
+			myType.Tag.Get("sopt"),
+			defaultConv,
+			myType.Tag.Get("comment"))
+	} else {
+		baseCmd.PersistentFlags().IPVar(&valueRaw,
+			myType.Tag.Get("lopt"),
+			defaultConv,
+			myType.Tag.Get("comment"))
+	}
+
+	return func() error {
+		if util.InSlice(GetUnsetVerbs(), *ptr) && *ptr != "" {
+		}
+		if valueRaw != nil {
+			// will always get a IP, not a string
+			*ptr = valueRaw.String()
+		}
+		return nil
+	}
+}
+
+
+func createIPMaskFlags(baseCmd *cobra.Command, excludeList []string,
+	myType reflect.StructField, myVal *reflect.Value) (func() error) {
+
+	ptr := myVal.Addr().Interface().(*string)
+	var valueRaw net.IPMask
+
+	defaultConv := net.ParseIP(myType.Tag.Get("default")).DefaultMask()
+	if myType.Tag.Get("sopt") != "" {
+		baseCmd.PersistentFlags().IPMaskVarP(&valueRaw,
+			myType.Tag.Get("lopt"),
+			myType.Tag.Get("sopt"),
+			defaultConv,
+			myType.Tag.Get("comment"))
+	} else {
+		baseCmd.PersistentFlags().IPMaskVar(&valueRaw,
+			myType.Tag.Get("lopt"),
+			defaultConv,
+			myType.Tag.Get("comment"))
+	}
+
+	return 	func() error {
+		if valueRaw != nil {
+			*ptr = valueRaw.String()
+			return nil
+		} else {
+			return fmt.Errorf("could not parse %s to IP", valueRaw.String())
+		}
+	}
+}
+
+
+func createMACFlags(baseCmd *cobra.Command, excludeList []string,
+	myType reflect.StructField, myVal *reflect.Value) (func() error) {
+
+	ptr := myVal.Addr().Interface().(*string)
+
+	if myType.Tag.Get("sopt") != "" {
+		baseCmd.PersistentFlags().StringVarP(ptr,
+			myType.Tag.Get("lopt"),
+			myType.Tag.Get("sopt"),
+			"",
+			myType.Tag.Get("comment"))
+	} else {
+		baseCmd.PersistentFlags().StringVar(ptr,
+			myType.Tag.Get("lopt"),
+			"",
+			myType.Tag.Get("comment"))
+	}
+
+	return func() error {
+		myMac, err := net.ParseMAC(*ptr)
+		if err != nil {
+			return err
+		}
+		*ptr = myMac.String()
+		return nil
+	}
+}
+
+
+func createStringFlags(baseCmd *cobra.Command, excludeList []string,
+	myType reflect.StructField, myVal *reflect.Value) {
+
+	ptr := myVal.Addr().Interface().(*string)
+
+	if myType.Tag.Get("sopt") != "" {
+		baseCmd.PersistentFlags().StringVarP(ptr,
+			myType.Tag.Get("lopt"),
+			myType.Tag.Get("sopt"),
+			myType.Tag.Get("default"),
+			myType.Tag.Get("comment"))
+	} else {
+		baseCmd.PersistentFlags().StringVar(ptr,
+			myType.Tag.Get("lopt"),
+			myType.Tag.Get("default"),
+			myType.Tag.Get("comment"))
+	}
+}
+
+
+func createStringListFlags(baseCmd *cobra.Command, excludeList []string,
+	myType reflect.StructField, myVal *reflect.Value) {
+
+	ptr := myVal.Addr().Interface().(*[]string)
+
+	if myType.Tag.Get("sopt") != "" {
+		baseCmd.PersistentFlags().StringSliceVarP(ptr,
+			myType.Tag.Get("lopt"),
+			myType.Tag.Get("sopt"),
+			[]string{myType.Tag.Get("default")},
+			myType.Tag.Get("comment"))
+	} else if !util.InSlice(excludeList, myType.Tag.Get("lopt")) {
+		baseCmd.PersistentFlags().StringSliceVar(ptr,
+			myType.Tag.Get("lopt"),
+			[]string{myType.Tag.Get("default")},
+			myType.Tag.Get("comment"))	
+	}
+}
+
+
+func createStringMapFlags(baseCmd *cobra.Command, excludeList []string,
+	myType reflect.StructField, myVal *reflect.Value) {
+
+	ptr := myVal.Addr().Interface().(*map[string]string)
+
+	if myType.Tag.Get("sopt") != "" {
+		baseCmd.PersistentFlags().StringToStringVarP(ptr,
+			myType.Tag.Get("lopt"),
+			myType.Tag.Get("sopt"),
+			map[string]string{}, // empty default!
+			myType.Tag.Get("comment"))
+	} else if !util.InSlice(excludeList, myType.Tag.Get("lopt")) {
+		baseCmd.PersistentFlags().StringToStringVar(ptr,
+			myType.Tag.Get("lopt"),
+			map[string]string{}, // empty default!
+			myType.Tag.Get("comment"))
+	}
 }
