@@ -88,6 +88,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   test-it with test. #890
 
 - realy reboot also without systemd
+- Specify primary network device per-node rather than per-netdev
 
 ## [4.4.0] 2023-01-18
 
