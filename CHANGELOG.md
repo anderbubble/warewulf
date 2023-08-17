@@ -86,9 +86,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Write log messages to stderr rather than stdout. #768
 - Updates to Makefile for clarity, notably removing genconfig and replacing
   test-it with test. #890
-
 - realy reboot also without systemd
-- Specify primary network device per-node rather than per-netdev
 - refactored output `wwctl node/profile list` so that `-a` will only show all the
   set values and `-A` will show all fields included the ones without a set value
 - Added support for file systems, partitions and disks. Values for these objects can
