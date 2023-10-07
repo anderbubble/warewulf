@@ -74,13 +74,7 @@ jobs:
 
         - name: Build RPMs
           run: |
-            mock -r ${{ matrix.target }} --rebuild --spec=warewulf.spec --sources=.
-            mock_exit=$?
-            if ${mock_exit} != 0
-            then
-              grep '^.*$' /var/lib/mock/${{ matrix.target }}/result/*.log
-            fi
-            exit ${mock_exit}
+            bash -c 'mock -r ${{ matrix.target }} --rebuild --spec=warewulf.spec --sources=.; mock_exit=$?; if ${mock_exit} != 0; then grep "^.*$" /var/lib/mock/${{ matrix.target }}/result/*.log; fi; exit ${mock_exit}'
 
         - name: Upload RPMs
           uses: actions/upload-artifact@v3
