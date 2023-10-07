@@ -20,6 +20,7 @@ warewulf.spec
 internal/pkg/config/buildconfig.go
 include/systemd/warewulfd.service
 warewulf-*.tar.gz
+warewulf-*.src.rpm
 Defaults.mk
 /etc/wwapid.conf
 /etc/wwapic.conf
