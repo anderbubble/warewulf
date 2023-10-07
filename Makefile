@@ -2,7 +2,7 @@
 all: build
 
 include Variables.mk
-include Tools.mk
+#include Tools.mk
 
 .PHONY: build
 build: wwctl wwclient wwapid wwapic wwapird etc/defaults.conf etc/bash_completion.d/wwctl
