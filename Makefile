@@ -158,6 +158,12 @@ dist:
 	cd .dist; tar -czf ../$(dist_tar) $(WAREWULF)-$(VERSION)
 	rm -rf .dist
 
+.PHONY: srpm
+srpm: dist warewulf.spec
+	rpmbuild -bs warewulf.spec \
+		--define "_sourcedir `pwd`"  \
+		--define "_srcrpmdir `pwd`"
+
 .PHONY: reference
 reference: wwctl
 	mkdir -p userdocs/reference
