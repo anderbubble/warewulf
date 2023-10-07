@@ -149,12 +149,13 @@ init:
 	cp -r tftpboot/* $(WWTFTPDIR)/ipxe/
 	restorecon -r $(WWTFTPDIR)
 
+dist_tar = $(WAREWULF)-$(VERSION).tar.gz
 .PHONY: dist
 dist:
-	rm -rf .dist/ $(WAREWULF)-$(VERSION).tar.gz
+	rm -rf .dist/ $(dist_tar)
 	mkdir -p .dist/$(WAREWULF)-$(VERSION)
 	rsync -a --exclude=".*" --exclude "*~" * .dist/$(WAREWULF)-$(VERSION)/
-	cd .dist; tar -czf ../$(WAREWULF)-$(VERSION).tar.gz $(WAREWULF)-$(VERSION)
+	cd .dist; tar -czf ../$(dist_tar) $(WAREWULF)-$(VERSION)
 	rm -rf .dist
 
 .PHONY: reference
