@@ -18,17 +18,17 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Build warewulf.spec and warewulf-${{ env.VERSION }}.tar.gz
+      - name: Build spec and dist
         run: |
           make warewulf.spec dist
 
-      - name: Upload warewulf.spec
+      - name: Upload spec
         uses: actions/upload-artifact@v3
         with:
           name: warewulf.spec
           path: warewulf.spec
 
-      - name: Upload warewulf-${{ env.VERSION }}.tar.gz
+      - name: Upload dist
         uses: actions/upload-artifact@v3
         with:
           name: warewulf-${{ env.VERSION }}.tar.gz
@@ -51,7 +51,7 @@ jobs:
         - name: Install mock and rpm-build
           run: dnf -y install mock rpm-build
 
-        - name: warewulf.spec
+        - name: Download spec
           uses: actions/download-artifact@v3
           with:
             name: warewulf.spec
@@ -60,7 +60,7 @@ jobs:
           run: |
             echo "EXPECTED_VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
 
-        - name: Download warewulf-${{ env.EXPECTED_VERSION }}.tar.gz
+        - name: Download dist
           uses: actions/download-artifact@v3
           with:
             name: warewulf-${{ env.EXPECTED_VERSION }}.tar.gz
@@ -72,10 +72,10 @@ jobs:
             echo "VERSION=${VERSION}" >> $GITHUB_ENV
             echo "RELEASE=${RELEASE}" >> $GITHUB_ENV
 
-        - name: Build RPMs for ${{ matrix.target }}
+        - name: Build RPMs
           run: mock -r ${{ matrix.target }} --rebuild --spec=warewulf.spec --sources=.
 
-        - name: Upload RPMs for ${{ matrix.target }}
+        - name: Upload RPMs
           uses: actions/upload-artifact@v3
           with:
             name: warewulf-${{ env.VERSION }}-${{ env.RELEASE }}
