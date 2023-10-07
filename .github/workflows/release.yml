@@ -1,5 +1,5 @@
 ---
-name: releasebuild
+name: release
 
 on:
   release:
@@ -7,93 +7,74 @@ on:
       - published
 
 jobs:
-  distbuild:
+  dist:
     name: Checkout code and build tar.gz
     runs-on: ubuntu-latest
     steps:
       - name: Set the version
-        id: version_number
         run: |
           echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
-
-      - name: Set the git source location
-        id: source_loc
-        run: |
-          echo "SRC=${GITHUB_REF}" >> $GITHUB_ENV
 
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Install Go
-        uses: actions/setup-go@v3
-        with:
-          go-version: '1.16'
-          cache: true
+      - name: Build warewulf.spec and warewulf-${{ env.VERSION }}.tar.gz
+        run: env VERSION=${{ env.VERSION }} make warewulf.spec dist
 
-      - name: Run tests
-        run: make vet lint test
-
-      - name: Build spec and tar.gz
-        run: env RELEASE=${{ env.VERSION }} make warewulf.spec dist
-
-      - name: Upload mock script
+      - name: Upload warewulf.spec
         uses: actions/upload-artifact@v3
         with:
-          name: mockbuild.sh
-          path: ci/mockbuild.sh
+          name: warewulf.spec
+          path: warewulf.spec
 
-      - name: Upload tar.gz
+      - name: Upload warewulf-${{ env.VERSION }}.tar.gz
         uses: actions/upload-artifact@v3
         with:
           name: warewulf-${{ env.VERSION }}.tar.gz
           path: warewulf-${{ env.VERSION }}.tar.gz
 
-  rpmbuild:
-      name: Build using Rocky Linux
-      needs: distbuild
+  rpm:
+      name: Build RPMs
+      needs: dist
       runs-on: ubuntu-latest
       container:
         image: rockylinux/rockylinux
         options: --privileged
+      strategy:
+        matrix:
+          target: ['rocky+epel-8-x86_64', 'centos+epel-7-x86_64', 'opensuse-leap-15.3-x86_64']
       steps:
-        - name: Set the version
-          id: version_number
+        - name: Set the version and release
           run: |
-            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+            VERSION=$(rpm -q --qf "%{VERSION}\n" --specfile warewulf.spec)
+            RELEASE=$(rpm -q --qf "%{RELEASE}\n" --specfile warewulf.spec | cut -d. -f1-2)
+            echo "VERSION=${VERSION}" >> $GITHUB_ENV
+            echo "RELEASE=${RELEASE}" >> $GITHUB_ENV
 
-        - name: Download mock build script
-          uses: actions/download-artifact@v3
-          with:
-            name: mockbuild.sh
+        - name: Install EPEL
+          run: dnf -y install epel-release
+
+        - name: Install mock
+          run: dnf -y install mock
 
         - name: Download tar.gz
           uses: actions/download-artifact@v3
           with:
             name: warewulf-${{ env.VERSION }}.tar.gz
 
-        - name: Set execute bit
-          run: chmod +x mockbuild.sh
+        - name: Download tar.gz
+          uses: actions/download-artifact@v3
+          with:
+            name: warewulf-${{ env.VERSION }}.tar.gz
 
-        - name: Run rpm build script
-          run: ./mockbuild.sh
+        - name: Build RPMs for ${{ matrix.target }}
+          run: mock -r ${{ matrix.target }} --rebuild --spec=warewulf.spec --sources=.
 
-        - name: Upload EL8 RPMs
+        - name: Upload RPMs for ${{ matrix.target }}
           uses: actions/upload-artifact@v3
           with:
-            name: warewulf-${{ env.VERSION }}-${{ env.RELEASE }}.el8
-            path: warewulf-${{ env.VERSION }}-${{ env.RELEASE }}.el8.*.rpm
-
-        - name: Upload EL7 RPMs
-          uses: actions/upload-artifact@v3
-          with:
-            name: warewulf-${{ env.VERSION }}-${{ env.RELEASE }}.el7
-            path: warewulf-${{ env.VERSION }}-${{ env.RELEASE }}.el7.*.rpm
-
-        - name: Upload openSUSE Leap 15.3 RPMs
-          uses: actions/upload-artifact@v3
-          with:
-            name: warewulf-${{ env.VERSION }}-${{ env.RELEASE }}.suse.lp153
-            path: warewulf-${{ env.VERSION }}-${{ env.RELEASE }}.suse.lp153.*.rpm
+            name: warewulf-${{ env.VERSION }}-${{ env.RELEASE }}
+            path: /var/lib/mock/${{ matrix.target }}/result/warewulf-${{ env.VERSION }}-${{ env.RELEASE }}.*.rpm
 
         - name: Upload Assets To Release
           if: "!github.event.release.prerelease"
