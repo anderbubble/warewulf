@@ -47,8 +47,8 @@ jobs:
         - name: Install EPEL
           run: dnf -y install epel-release
 
-        - name: Install mock
-          run: dnf -y install mock
+        - name: Install mock and rpm-build
+          run: dnf -y install mock rpm-build
 
         - name: warewulf.spec
           uses: actions/download-artifact@v3
