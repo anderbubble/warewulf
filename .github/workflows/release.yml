@@ -15,11 +15,14 @@ jobs:
         run: |
           echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
 
+      - name: Configure offline build
+        run: echo "OFFLINE_BUILD=1" >> $GITHUB_ENV
+
       - name: Checkout Code
         uses: actions/checkout@v3
 
       - name: Build warewulf.spec and warewulf-${{ env.VERSION }}.tar.gz
-        run: env VERSION=${{ env.VERSION }} OFFLINE_BUILD=1 make warewulf.spec dist
+        run: make warewulf.spec dist
 
       - name: Upload warewulf.spec
         uses: actions/upload-artifact@v3
