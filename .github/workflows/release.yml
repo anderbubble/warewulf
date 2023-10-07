@@ -22,7 +22,9 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Build warewulf.spec and warewulf-${{ env.VERSION }}.tar.gz
-        run: make --debug=b warewulf.spec dist
+        run: |
+          echo "Begin make"
+          make -d warewulf.spec dist
 
       - name: Upload warewulf.spec
         uses: actions/upload-artifact@v3
