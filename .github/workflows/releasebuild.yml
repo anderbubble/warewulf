@@ -30,6 +30,9 @@ jobs:
           go-version: '1.16'
           cache: true
 
+      - name: Run tests
+        run: make vet lint test
+
       - name: Build spec and tar.gz
         run: env RELEASE=${{ env.VERSION }} make warewulf.spec dist
 
