@@ -44,28 +44,32 @@ jobs:
         matrix:
           target: ['rocky+epel-8-x86_64', 'centos+epel-7-x86_64', 'opensuse-leap-15.3-x86_64']
       steps:
-        - name: Set the version and release
-          run: |
-            VERSION=$(rpm -q --qf "%{VERSION}\n" --specfile warewulf.spec)
-            RELEASE=$(rpm -q --qf "%{RELEASE}\n" --specfile warewulf.spec | cut -d. -f1-2)
-            echo "VERSION=${VERSION}" >> $GITHUB_ENV
-            echo "RELEASE=${RELEASE}" >> $GITHUB_ENV
-
         - name: Install EPEL
           run: dnf -y install epel-release
 
         - name: Install mock
           run: dnf -y install mock
 
-        - name: Download tar.gz
+        - name: warewulf.spec
           uses: actions/download-artifact@v3
           with:
-            name: warewulf-${{ env.VERSION }}.tar.gz
+            name: warewulf.spec
 
-        - name: Download tar.gz
+        - name: Set the expected version
+          run: |
+            echo "EXPECTED_VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+
+        - name: Download warewulf-${{ env.EXPECTED_VERSION }}.tar.gz
           uses: actions/download-artifact@v3
           with:
-            name: warewulf-${{ env.VERSION }}.tar.gz
+            name: warewulf-${{ env.EXPECTED_VERSION }}.tar.gz
+
+        - name: Set the version and release
+          run: |
+            VERSION=$(rpm -q --qf "%{VERSION}\n" --specfile warewulf.spec)
+            RELEASE=$(rpm -q --qf "%{RELEASE}\n" --specfile warewulf.spec | cut -d. -f1-2)
+            echo "VERSION=${VERSION}" >> $GITHUB_ENV
+            echo "RELEASE=${RELEASE}" >> $GITHUB_ENV
 
         - name: Build RPMs for ${{ matrix.target }}
           run: mock -r ${{ matrix.target }} --rebuild --spec=warewulf.spec --sources=.
