@@ -30,8 +30,8 @@ jobs:
           go-version: '1.16'
           cache: true
 
-      - name: Build tar.gz
-        run: make dist
+      - name: Build spec and tar.gz
+        run: env RELEASE=${{ env.VERSION }} make warewulf.spec dist
 
       - name: Upload mock script
         uses: actions/upload-artifact@v3
@@ -72,7 +72,7 @@ jobs:
           run: chmod +x mockbuild.sh
 
         - name: Run rpm build script
-          run: ./mockbuild.sh  ${{ env.VERSION }}
+          run: ./mockbuild.sh
 
         - name: Upload EL8 RPMs
           uses: actions/upload-artifact@v3
