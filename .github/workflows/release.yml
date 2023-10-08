@@ -104,25 +104,10 @@ jobs:
             name: ${{ env.SRPM }}
             path: /var/lib/mock/${{ matrix.target }}/result/${{ env.SRPM }}
 
-        - name: Upload Assets To Release
-          if: "!github.event.release.prerelease"
+        - name: Attach DIST, RPM, and SRPM to release
           uses: xresloader/upload-to-github-release@v1
           env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           with:
+            release_id: ${{ github.event.release.id }}
             file: '${{ env.DIST }};${{ env.RPM }};${{ env.SRPM }}'
-            draft: false
-            update_latest_release: true
-            tags: true
-
-        - name: Upload Assets To Pre-Release
-          if: "github.event.release.prerelease"
-          uses: xresloader/upload-to-github-release@v1
-          env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          with:
-            file: '${{ env.DIST }};${{ env.RPM }};${{ env.SRPM }}'
-            draft: false
-            update_latest_release: false
-            prerelease: true
-            tags: true
