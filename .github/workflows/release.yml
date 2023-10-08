@@ -78,14 +78,14 @@ jobs:
           with:
             name: warewulf-${{ env.EXPECTED_VERSION }}.tar.gz
 
-        - name: Set TAR, RPM, and SRPM
+        - name: Set DIST, RPM, and SRPM
           run: |
             VERSION=$(rpm -q --qf "%{VERSION}\n" --specfile warewulf.spec)
             GENERIC_RELEASE=$(rpm -q --qf "%{RELEASE}\n" --specfile warewulf.spec | cut -d. -f1-2)
-            TAR=warewulf-${VERSION}.tar.gz
+            DIST=warewulf-${VERSION}.tar.gz
             RPM=warewulf-${VERSION}-${GENERIC_RELEASE}.${{ matrix.dist }}.${{ matrix.arch }}.rpm
             SRPM=warewulf-${VERSION}-${GENERIC_RELEASE}.${{ matrix.dist }}.src.rpm
-            echo "TAR=${TAR}" >> $GITHUB_ENV
+            echo "DIST=${DIST}" >> $GITHUB_ENV
             echo "RPM=${RPM}" >> $GITHUB_ENV
             echo "SRPM=${SRPM}" >> $GITHUB_ENV
 
@@ -95,14 +95,14 @@ jobs:
         - name: Upload RPM
           uses: actions/upload-artifact@v3
           with:
-            name: ${{ RPM }}
-            path: /var/lib/mock/${{ matrix.target }}/result/${{ RPM }}
+            name: ${{ env.RPM }}
+            path: /var/lib/mock/${{ matrix.target }}/result/${{ env.RPM }}
 
         - name: Upload SRPM
           uses: actions/upload-artifact@v3
           with:
-            name: ${{ SRPM }}
-            path: /var/lib/mock/${{ matrix.target }}/result/${{ SRPM }}
+            name: ${{ env.SRPM }}
+            path: /var/lib/mock/${{ matrix.target }}/result/${{ env.SRPM }}
 
         - name: Upload Assets To Release
           if: "!github.event.release.prerelease"
@@ -110,7 +110,7 @@ jobs:
           env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           with:
-            file: '${{ TAR }};${{ RPM }};${{ SRPM }}'
+            file: '${{ env.DIST }};${{ env.RPM }};${{ env.SRPM }}'
             draft: false
             update_latest_release: true
             tags: true
@@ -121,7 +121,7 @@ jobs:
           env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           with:
-            file: '${{ TAR }};${{ RPM }};${{ SRPM }}'
+            file: '${{ env.DIST }};${{ env.RPM }};${{ env.SRPM }}'
             draft: false
             update_latest_release: false
             prerelease: true
