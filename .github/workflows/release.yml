@@ -43,7 +43,7 @@ jobs:
         options: --privileged
       strategy:
         matrix:
-          target: ['rocky+epel-8-x86_64', 'centos+epel-7-x86_64', 'opensuse-leap-15.3-x86_64']
+          target: ['rocky+epel-8-x86_64', 'centos+epel-7-x86_64', 'opensuse-leap-15.5-x86_64']
       steps:
         - name: Install EPEL
           run: dnf -y install epel-release
