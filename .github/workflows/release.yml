@@ -116,4 +116,4 @@ jobs:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           with:
             release_id: ${{ github.event.release.id }}
-            file: '${{ env.RPM }};${{ env.SRPM }}'
+            file: "${{ env.RPM }};${{ env.SRPM }}"
