@@ -54,7 +54,7 @@ jobs:
               dist: el7
             - target: opensuse-leap-15.5-x86_64
               arch: x86_64
-              dist: lp155
+              dist: suse.lp155
       steps:
         - name: Install EPEL
           run: dnf -y install epel-release
