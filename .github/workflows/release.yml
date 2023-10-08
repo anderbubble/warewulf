@@ -14,7 +14,7 @@ jobs:
       - name: Set the version
         run: |
           VERSION=${GITHUB_REF#refs/tags/v}
-          DIST="warewulf-${{ env.VERSION }}.tar.gz"
+          DIST="warewulf-${VERSION}.tar.gz"
           echo "DIST=${DIST}" >> $GITHUB_ENV
 
       - name: Checkout Code
