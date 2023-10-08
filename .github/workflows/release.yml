@@ -34,6 +34,14 @@ jobs:
           name: warewulf-${{ env.VERSION }}.tar.gz
           path: warewulf-${{ env.VERSION }}.tar.gz
 
+      - name: Attach DIST to release
+        uses: xresloader/upload-to-github-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          release_id: ${{ github.event.release.id }}
+          file: '${{ env.DIST }}'
+
   rpm:
       name: Build RPMs
       needs: dist
@@ -104,10 +112,10 @@ jobs:
             name: ${{ env.SRPM }}
             path: /var/lib/mock/${{ matrix.target }}/result/${{ env.SRPM }}
 
-        - name: Attach DIST, RPM, and SRPM to release
+        - name: Attach RPM and SRPM to release
           uses: xresloader/upload-to-github-release@v1
           env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           with:
             release_id: ${{ github.event.release.id }}
-            file: '${{ env.DIST }};${{ env.RPM }};${{ env.SRPM }}'
+            file: '${{ env.RPM }};${{ env.SRPM }}'
