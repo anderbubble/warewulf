@@ -8,12 +8,14 @@ on:
 
 jobs:
   dist:
-    name: Checkout code and build tar.gz
+    name: Checkout code and build warewulf.spec and dist
     runs-on: ubuntu-latest
     steps:
       - name: Set the version
         run: |
-          echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+          VERSION=${GITHUB_REF#refs/tags/v}
+          DIST="warewulf-${{ env.VERSION }}.tar.gz"
+          echo "DIST=${DIST}" >> $GITHUB_ENV
 
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -22,17 +24,17 @@ jobs:
         run: |
           make warewulf.spec dist
 
-      - name: Upload spec
+      - name: Upload warewulf.spec
         uses: actions/upload-artifact@v3
         with:
           name: warewulf.spec
           path: warewulf.spec
 
-      - name: Upload dist
+      - name: Upload DIST
         uses: actions/upload-artifact@v3
         with:
-          name: warewulf-${{ env.VERSION }}.tar.gz
-          path: warewulf-${{ env.VERSION }}.tar.gz
+          name: ${{ env.DIST }}
+          path: ${{ env.DIST }}
 
       - name: Attach DIST to release
         uses: xresloader/upload-to-github-release@v1
@@ -40,7 +42,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           release_id: ${{ github.event.release.id }}
-          file: '${{ env.DIST }}'
+          file: ${{ env.DIST }}
 
   rpm:
       name: Build RPMs
