@@ -11,11 +11,11 @@ jobs:
     name: Checkout code and build warewulf.spec and dist
     runs-on: ubuntu-latest
     steps:
-      - name: Set the version
+      - name: Set DIST
         run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
-          DIST="warewulf-${VERSION}.tar.gz"
-          echo "DIST=${DIST}" >> $GITHUB_ENV
+          echo "${GITHUB_REF}"
+          echo "${GITHUB_REF#refs/tags/v}"
+          echo "DIST=warewulf-${GITHUB_REF#refs/tags/v}.tar.gz" >> $GITHUB_ENV
 
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -88,14 +88,12 @@ jobs:
           with:
             name: warewulf-${{ env.EXPECTED_VERSION }}.tar.gz
 
-        - name: Set DIST, RPM, and SRPM
+        - name: Set RPM and SRPM
           run: |
             VERSION=$(rpm -q --qf "%{VERSION}\n" --specfile warewulf.spec)
             GENERIC_RELEASE=$(rpm -q --qf "%{RELEASE}\n" --specfile warewulf.spec | cut -d. -f1-2)
-            DIST=warewulf-${VERSION}.tar.gz
             RPM=warewulf-${VERSION}-${GENERIC_RELEASE}.${{ matrix.dist }}.${{ matrix.arch }}.rpm
             SRPM=warewulf-${VERSION}-${GENERIC_RELEASE}.${{ matrix.dist }}.src.rpm
-            echo "DIST=${DIST}" >> $GITHUB_ENV
             echo "RPM=${RPM}" >> $GITHUB_ENV
             echo "SRPM=${SRPM}" >> $GITHUB_ENV
 
