@@ -92,9 +92,9 @@ jobs:
           run: |
             mock -r ${{ matrix.target }} --clean
             mock -r ${{ matrix.target }} --installdeps warewulf.spec
-            mock -r ${{ matrix.target }} --copyin=warewulf-4.5.x.tar.gz
-            mock -r ${{ matrix.target }} --chroot -- "tar -xf warewulf-${{ env.EXPECTED_VERSION }}.tar.gz"
-            mock -r ${{ matrix.target }} --chroot -- "make -C warewulf-${{ env.EXPECTED_VERSION }} test"
+            mock -r ${{ matrix.target }} --copyin=warewulf-4.5.x.tar.gz /builddir/build/SOURCES
+            mock -r ${{ matrix.target }} --chroot -- "tar -C /builddir/build/SOURCES -xf /builddir/build/SOURCES/warewulf-${{ env.EXPECTED_VERSION }}.tar.gz"
+            mock -r ${{ matrix.target }} --chroot -- "make -C /builddir/build/SOURCES/warewulf-${{ env.EXPECTED_VERSION }} test"
 
         - name: Set RPM and SRPM
           run: |
