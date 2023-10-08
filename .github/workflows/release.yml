@@ -13,8 +13,8 @@ jobs:
     steps:
       - name: Set DIST
         run: |
-          echo "${GITHUB_REF}"
-          echo "${GITHUB_REF#refs/tags/v}"
+          echo "GITHUB_REF=${GITHUB_REF}" >> $GITHUB_ENV
+          echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
           echo "DIST=warewulf-${GITHUB_REF#refs/tags/v}.tar.gz" >> $GITHUB_ENV
 
       - name: Checkout Code
