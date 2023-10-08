@@ -42,8 +42,19 @@ jobs:
         image: rockylinux/rockylinux:9
         options: --privileged
       strategy:
+        fail-fast: false
         matrix:
           target: ['rocky+epel-8-x86_64', 'centos+epel-7-x86_64', 'opensuse-leap-15.5-x86_64']
+          include:
+            - target: rocky+epel-8-x86_64
+              arch: x86_64
+              dist: el8
+            - target: centos+epel-7-x86_64
+              arch: x86_64
+              dist: el7
+            - target: opensuse-leap-15.5-x86_64
+              arch: x86_64
+              dist: lp155
       steps:
         - name: Install EPEL
           run: dnf -y install epel-release
@@ -67,21 +78,31 @@ jobs:
           with:
             name: warewulf-${{ env.EXPECTED_VERSION }}.tar.gz
 
-        - name: Set the version and release
+        - name: Set TAR, RPM, and SRPM
           run: |
             VERSION=$(rpm -q --qf "%{VERSION}\n" --specfile warewulf.spec)
-            RELEASE=$(rpm -q --qf "%{RELEASE}\n" --specfile warewulf.spec | cut -d. -f1-2)
-            echo "VERSION=${VERSION}" >> $GITHUB_ENV
-            echo "RELEASE=${RELEASE}" >> $GITHUB_ENV
+            GENERIC_RELEASE=$(rpm -q --qf "%{RELEASE}\n" --specfile warewulf.spec | cut -d. -f1-2)
+            TAR=warewulf-${VERSION}.tar.gz
+            RPM=warewulf-${VERSION}-${GENERIC_RELEASE}.${{ matrix.dist }}.${{ matrix.arch }}.rpm
+            SRPM=warewulf-${VERSION}-${GENERIC_RELEASE}.${{ matrix.dist }}.src.rpm
+            echo "TAR=${TAR}" >> $GITHUB_ENV
+            echo "RPM=${RPM}" >> $GITHUB_ENV
+            echo "SRPM=${SRPM}" >> $GITHUB_ENV
 
         - name: Build RPMs
           run: mock -r ${{ matrix.target }} --rebuild --spec=warewulf.spec --sources=.
 
-        - name: Upload RPMs
+        - name: Upload RPM
           uses: actions/upload-artifact@v3
           with:
-            name: warewulf-${{ env.VERSION }}-${{ env.RELEASE }}
-            path: /var/lib/mock/${{ matrix.target }}/result/warewulf-${{ env.VERSION }}-${{ env.RELEASE }}.*.rpm
+            name: ${{ RPM }}
+            path: /var/lib/mock/${{ matrix.target }}/result/${{ RPM }}
+
+        - name: Upload SRPM
+          uses: actions/upload-artifact@v3
+          with:
+            name: ${{ SRPM }}
+            path: /var/lib/mock/${{ matrix.target }}/result/${{ SRPM }}
 
         - name: Upload Assets To Release
           if: "!github.event.release.prerelease"
@@ -89,7 +110,7 @@ jobs:
           env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           with:
-            file: 'warewulf-${{ env.VERSION }}.tar.gz;warewulf-${{ env.VERSION }}-${{ env.RELEASE }}.*.rpm'
+            file: '${{ TAR }};${{ RPM }};${{ SRPM }}'
             draft: false
             update_latest_release: true
             tags: true
@@ -100,7 +121,7 @@ jobs:
           env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           with:
-            file: 'warewulf-${{ env.VERSION }}.tar.gz;warewulf-${{ env.VERSION }}-${{ env.RELEASE }}.*.rpm'
+            file: '${{ TAR }};${{ RPM }};${{ SRPM }}'
             draft: false
             update_latest_release: false
             prerelease: true
