@@ -86,6 +86,14 @@ jobs:
           with:
             name: warewulf-${{ env.EXPECTED_VERSION }}.tar.gz
 
+        - name: Run tests
+          run: |
+            mock -r ${{ matrix.target }} --clean
+            mock -r ${{ matrix.target }} --installdeps warewulf.spec
+            mock -r ${{ matrix.target }} --copyin=warewulf-4.5.x.tar.gz
+            mock -r ${{ matrix.target }} --chroot -- "tar -xf warewulf-${{ env.EXPECTED_VERSION }}.tar.gz"
+            mock -r ${{ matrix.target }} --chroot -- "make -C warewulf-${{ env.EXPECTED_VERSION }} test"
+
         - name: Set RPM and SRPM
           run: |
             VERSION=$(rpm -q --qf "%{VERSION}\n" --specfile warewulf.spec)
