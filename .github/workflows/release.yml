@@ -39,7 +39,7 @@ jobs:
       needs: dist
       runs-on: ubuntu-latest
       container:
-        image: rockylinux/rockylinux
+        image: rockylinux/rockylinux:8
         options: --privileged
       strategy:
         matrix:
