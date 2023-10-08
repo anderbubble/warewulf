@@ -68,9 +68,6 @@ jobs:
             - target: centos+epel-7-x86_64
               arch: x86_64
               dist: el7
-            - target: centos+epel-7-aarch64
-              arch: aarch64
-              dist: el7
             - target: opensuse-leap-15.5-x86_64
               arch: x86_64
               dist: suse.lp155
