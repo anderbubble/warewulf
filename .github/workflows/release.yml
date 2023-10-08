@@ -88,14 +88,6 @@ jobs:
           with:
             name: warewulf-${{ env.EXPECTED_VERSION }}.tar.gz
 
-        - name: Run tests
-          run: |
-            mock -r ${{ matrix.target }} --clean
-            mock -r ${{ matrix.target }} --installdeps warewulf.spec
-            mock -r ${{ matrix.target }} --copyin warewulf-4.5.x.tar.gz /builddir/build/SOURCES
-            mock -r ${{ matrix.target }} --chroot -- "tar -C /builddir/build/SOURCES -xf /builddir/build/SOURCES/warewulf-${{ env.EXPECTED_VERSION }}.tar.gz"
-            mock -r ${{ matrix.target }} --chroot -- "make -C /builddir/build/SOURCES/warewulf-${{ env.EXPECTED_VERSION }} test"
-
         - name: Set RPM and SRPM
           run: |
             VERSION=$(rpm -q --qf "%{VERSION}\n" --specfile warewulf.spec)
@@ -105,8 +97,10 @@ jobs:
             echo "RPM=${RPM}" >> $GITHUB_ENV
             echo "SRPM=${SRPM}" >> $GITHUB_ENV
 
-        - name: Build RPMs
-          run: mock -r ${{ matrix.target }} --rebuild --spec=warewulf.spec --sources=.
+        - name: Build RPMs and run tests
+          run: |
+            mock -r ${{ matrix.target }} --rebuild --spec=warewulf.spec --sources=.
+            mock -r ${{ matrix.target }} --chroot -- make -C /builddir/build/BUILD/warewulf-${{ env.EXPECTED_VERSION }} test
 
         - name: Upload RPM
           uses: actions/upload-artifact@v3
