@@ -52,7 +52,6 @@ jobs:
       strategy:
         fail-fast: false
         matrix:
-          target: ['rocky+epel-8-x86_64', 'rocky+epel-9-x86_64', 'centos+epel-7-x86_64', 'opensuse-leap-15.5-x86_64']
           include:
             - target: rocky+epel-8-x86_64
               arch: x86_64
@@ -60,11 +59,20 @@ jobs:
             - target: rocky+epel-9-x86_64
               arch: x86_64
               dist: el9
+            - target: rocky+epel-8-aarch64
+              arch: aarch64
+              dist: el8
+            - target: rocky+epel-9-aarch64
+              arch: aarch64
+              dist: el9
             - target: centos+epel-7-x86_64
               arch: x86_64
               dist: el7
             - target: opensuse-leap-15.5-x86_64
               arch: x86_64
+              dist: suse.lp155
+            - target: opensuse-leap-15.5-aarch64
+              arch: aarch64
               dist: suse.lp155
       steps:
         - name: Install EPEL
