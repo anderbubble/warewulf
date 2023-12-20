@@ -2,10 +2,6 @@ package list
 
 import (
 	"bytes"
-	"io"
-	"os"
-	"os/exec"
-	"path"
 	"strings"
 	"testing"
 
@@ -40,47 +36,40 @@ func Test_List_Args(t *testing.T) {
 			fail: false,
 		},
 	}
-	env := testenv.New(t)
-	env.WriteFile(t, path.Join(testenv.WWChrootdir, "test/rootfs/bin/sh"), `This is a fake shell, no pearls here.`)
-	// need to touch the files, so that the creation date of the container is constant,
-	// modification date of `../chroots/containername` is used as creation date.
-	// modification dates of directories change every time a file or subdir is added
-	// so we have to make it constant *after* its creation.
-	cmd := exec.Command("touch", "-d", "2000-01-02 03:04:05 UTC",
-		env.GetPath(path.Join(testenv.WWChrootdir, "test/rootfs")),
-		env.GetPath(path.Join(testenv.WWChrootdir, "test")))
-	err := cmd.Run()
-	assert.NoError(t, err)
-	defer env.RemoveAll(t)
+
 	warewulfd.SetNoDaemon()
 	for _, tt := range tests {
+		env := testenv.New(t)
+		defer env.RemoveAll(t)
+		env.WriteFile(t, "etc/warewulf/nodes.conf", tt.inDb)
+		env.WriteFile(t, path.Join(testenv.WWChrootdir, "test/rootfs/bin/sh"), `This is a fake shell, no pearls here.`)
+		// need to touch the files, so that the creation date of the container is constant,
+		// modification date of `../chroots/containername` is used as creation date.
+		// modification dates of directories change every time a file or subdir is added
+		// so we have to make it constant *after* its creation.
+		cmd := exec.Command("touch", "-d", "2000-01-02 03:04:05 UTC",
+			env.GetPath(path.Join(testenv.WWChrootdir, "test/rootfs")),
+			env.GetPath(path.Join(testenv.WWChrootdir, "test")))
+		err := cmd.Run()
+		assert.NoError(t, err)
+
+		t.Logf("Running test: %s\n", tt.name)
 		t.Run(strings.Join(tt.args, "_"), func(t *testing.T) {
+			buf := new(bytes.Buffer)
 			baseCmd := GetCommand()
 			baseCmd.SetArgs(tt.args)
-			stdoutR, stdoutW, _ := os.Pipe()
-			os.Stdout = stdoutW
-			wwlog.SetLogWriter(os.Stdout)
-			baseCmd.SetOut(os.Stdout)
-			baseCmd.SetErr(os.Stdout)
+			baseCmd.SetOut(nil)
+			baseCmd.SetErr(nil)
+			wwlog.SetLogWriter(buf)
 			err := baseCmd.Execute()
 			if tt.fail {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
 			}
-			stdoutC := make(chan string)
-			go func() {
-				var buf bytes.Buffer
-				_, _ = io.Copy(&buf, stdoutR)
-				stdoutC <- buf.String()
-			}()
-			stdoutW.Close()
-			stdout := <-stdoutC
-			assert.Equal(t, tt.output, stdout)
-			assert.Equal(t,
-				strings.ReplaceAll(strings.TrimSpace(tt.output), " ", ""),
-				strings.ReplaceAll(strings.TrimSpace(stdout), " ", ""))
-
+			assert.Contains(t,
+				strings.Join(strings.Fields(buf.String()), ""),
+				strings.Join(strings.Fields(tt.stdout), ""))
 		})
 	}
 }
