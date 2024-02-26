@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   warewulf.grubboot: true in warewulf.conf. For unknown nodes, grub.efi
   and shim.efi are extracted from the Warewulf host. If the booted node
   has a container these binaries are extracted from the container image.
+- Added https://github.com/Masterminds/sprig functions to templates
 
 ### Fixed
 - Make mounting of local patitions into sub-directories work
@@ -73,7 +74,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix panic when node has no profile but network does #1094
 
 ### Changed
-
+- The "replace" template function now maps directly to string.Replace instead
+  of wrapping with a hardcoded value of n
 - The primary hostname and warewulf server fqdn are now the canonical name in
   `/etc/hosts`
 - Refactored `profile add` command to make it alike `node add`. #658 #659
