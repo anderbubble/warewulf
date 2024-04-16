@@ -38,6 +38,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 ### Added
 
 - Allow specification of the ssh-keys to be to be created. #1185
+- Add `stage=initramfs` to warewulfd provision to serve initramfs from container image. #1115
 
 ### Fixed
 
