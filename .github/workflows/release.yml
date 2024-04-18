@@ -54,9 +54,6 @@ jobs:
           - target: rocky+epel-9-x86_64
             arch: x86_64
             dist: el9
-          - target: centos+epel-7-x86_64
-            arch: x86_64
-            dist: el7
           - target: opensuse-leap-15.5-x86_64
             arch: x86_64
             dist: suse.lp155
@@ -75,8 +72,9 @@ jobs:
 
       - name: Build RPMs and run tests
         run: |
-          mock -r ${{ matrix.target }} --rebuild --spec=warewulf.spec --sources=.
-          mock -r ${{ matrix.target }} --chroot -- bash -c "make -C /builddir/build/BUILD/warewulf-*/ test"
+          mock -r ${{ matrix.target }} --chroot -- rpm --showrc \
+          && mock -r ${{ matrix.target }} --rebuild --spec=warewulf.spec --sources=. \
+          && mock -r ${{ matrix.target }} --chroot -- bash -c "make -C /builddir/build/BUILD/warewulf-*/ test"
 
       - name: Attach RPM and SRPM to release
         uses: xresloader/upload-to-github-release@v1
