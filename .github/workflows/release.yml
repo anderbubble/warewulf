@@ -76,7 +76,7 @@ jobs:
       - name: Build RPMs and run tests
         run: |
           mock -r ${{ matrix.target }} --rebuild --spec=warewulf.spec --sources=.
-          mock -r ${{ matrix.target }} --chroot -- make -C /builddir/build/BUILD/warewulf-*/ test
+          mock -r ${{ matrix.target }} --chroot -- bash -c "make -C /builddir/build/BUILD/warewulf-*/ test"
 
       - name: Attach RPM and SRPM to release
         uses: xresloader/upload-to-github-release@v1
