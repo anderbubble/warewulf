@@ -7,7 +7,9 @@ on:
     - cron:  '05 00 * * *'
 
 jobs:
-  update_nightly_tag:
+  update_tag:
+    name: Update the nightly tag
+    runs-on: ubuntu-latest
     steps:
       - name: update tag
         uses: actions/github-script@v5
