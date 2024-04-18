@@ -44,6 +44,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Add iPXE template `dracut.ipxe` to boot a dracut initramfs. #1115
 - Add `.NetDevs` variable to iPXE templates, similar to overlay templates. #1115
 
+### Changed
+
+- Improved detection of SELinux capable root fs #1093
+
 ### Fixed
 
 - Fix nightly release build failure issue. #1195
