@@ -28,14 +28,31 @@ jobs:
             warewulf.spec
             warewulf-*.tar.gz
 
+      - name: Write nightly release notes
+        if: ${{ startsWith(github.ref_name, 'nightly') }}
+        run: |
+          cat << EOF >> release-notes.txt
+          THIS IS A NIGHTLY RELEASE
+
+          This release contains latest commits, which is a feature unstable version
+
+          Reflog:
+          $(git reflog main --since $(git describe --tags --abbrev=0))
+
+          Commits:
+          $(git log --oneline --graph $(git describe --tags --abbrev=0)..HEAD)
+          EOF
+        shell: bash
+
       - name: Attach dist to release
         uses: xresloader/upload-to-github-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          delete_file: "warewulf-*.tar.gz;warewulf-*.rpm"
           file: warewulf-*.tar.gz
+          body_path: release-notes.txt
           tags: true
-          draft: true
 
   rpm:
     name: Build RPMs
@@ -83,4 +100,3 @@ jobs:
         with:
           file: "/var/lib/mock/${{ matrix.target }}/result/warewulf-*.rpm"
           tags: true
-          draft: true
