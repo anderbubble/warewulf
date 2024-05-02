@@ -33,6 +33,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   `/sys/firmware/devicetree/base/serial-number`
 - Replace slice in templates with sprig substr. #1093
 
+## v4.5.2, unreleased
+
+### Changed
+
+- `wwctl container import` now only runs syncuser if explicitly requested. #1212
+
+### Fixed
+
+- Only walk the container file system once during syncuser. #1209
+
 ## v4.5.1, 2024-04-30
 
 ### Added
