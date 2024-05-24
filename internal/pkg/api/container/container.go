@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/warewulf/warewulf/internal/pkg/api/routes/wwapiv1"
 	"github.com/warewulf/warewulf/internal/pkg/container"
+	"github.com/warewulf/warewulf/internal/pkg/containerrun"
 	"github.com/warewulf/warewulf/internal/pkg/kernel"
 	"github.com/warewulf/warewulf/internal/pkg/node"
 	"github.com/warewulf/warewulf/internal/pkg/util"
@@ -36,7 +37,7 @@ func ContainerCopy(cbp *wwapiv1.ContainerCopyParameter) (err error) {
 		return fmt.Errorf("An other container with the name %s already exists", cbp.ContainerDestination)
 	}
 
-	err = container.Duplicate(cbp.ContainerSource, cbp.ContainerDestination)
+	err = containerrun.Duplicate(cbp.ContainerSource, cbp.ContainerDestination)
 	if err != nil {
 		return fmt.Errorf("could not duplicate image: %s", err.Error())
 	}
@@ -68,7 +69,7 @@ func ContainerBuild(cbp *wwapiv1.ContainerBuildParameter) (err error) {
 			return
 		}
 
-		err = container.Build(c, cbp.Force)
+		err = containerrun.Build(c, cbp.Force)
 		if err != nil {
 			wwlog.Error("Could not build container %s: %s", c, err)
 			return
@@ -243,7 +244,7 @@ func ContainerImport(cip *wwapiv1.ContainerImportParameter) (containerName strin
 
 	if cip.Build {
 		wwlog.Info("Building container: %s", cip.Name)
-		err = container.Build(cip.Name, true)
+		err = containerrun.Build(cip.Name, true)
 		if err != nil {
 			err = fmt.Errorf("could not build container %s: %s", cip.Name, err.Error())
 			wwlog.Error(err.Error())
@@ -420,7 +421,7 @@ func ContainerRename(crp *wwapiv1.ContainerRenameParameter) (err error) {
 	}
 
 	if crp.Build {
-		err = container.Build(crp.TargetName, true)
+		err = containerrun.Build(crp.TargetName, true)
 		if err != nil {
 			return err
 		}

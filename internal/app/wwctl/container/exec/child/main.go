@@ -22,6 +22,7 @@ import (
 )
 
 func CobraRunE(cmd *cobra.Command, args []string) (err error) {
+	wwlog.Debug("__child called with: %s", args)
 	if os.Getpid() != 1 {
 		wwlog.Error("PID is not 1: %d", os.Getpid())
 		os.Exit(1)
@@ -164,12 +165,13 @@ func CobraRunE(cmd *cobra.Command, args []string) (err error) {
 	os.Setenv("PS1", ps1Str)
 	os.Setenv("PATH", "/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin")
 	os.Setenv("HISTFILE", "/dev/null")
-
-	_ = syscall.Exec(args[1], args[1:], os.Environ())
+	wwlog.Debug("Exec: %s %s", args[1], args[1:])
+	err = syscall.Exec(args[1], args[1:], os.Environ())
 	/*
-		Exec replaces the actual program, so nothing to do here afterwards
+		Exec replaces the actual program, so nothing to do here afterwards, BUT still
+		if Exec fails we give err back
 	*/
-	return nil
+	return err
 }
 
 /*

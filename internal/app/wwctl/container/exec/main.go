@@ -6,56 +6,16 @@ package exec
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path"
 	"syscall"
 	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/warewulf/warewulf/internal/pkg/container"
+	"github.com/warewulf/warewulf/internal/pkg/containerrun"
 	"github.com/warewulf/warewulf/internal/pkg/util"
 	"github.com/warewulf/warewulf/internal/pkg/wwlog"
 )
-
-/*
-fork off a process with a new PID space
-*/
-func runContainedCmd(args []string) error {
-	var err error
-	if tempDir == "" {
-		tempDir, err = os.MkdirTemp(os.TempDir(), "overlay")
-		if err != nil {
-			wwlog.Warn("couldn't create temp dir for overlay", err)
-		}
-		defer func() {
-			err = os.RemoveAll(tempDir)
-			if err != nil {
-				wwlog.Warn("Couldn't remove temp dir for ephermal mounts:", err)
-			}
-		}()
-	}
-	logStr := fmt.Sprint(wwlog.GetLogLevel())
-	wwlog.Verbose("Running contained command: %s", args[1:])
-	c := exec.Command("/proc/self/exe", append([]string{"--loglevel", logStr, "--tempdir", tempDir, "container", "exec", "__child"}, args...)...)
-
-	c.SysProcAttr = &syscall.SysProcAttr{
-		Cloneflags: syscall.CLONE_NEWUTS | syscall.CLONE_NEWPID | syscall.CLONE_NEWNS,
-	}
-	c.Stdin = os.Stdin
-	c.Stdout = os.Stdout
-	c.Stderr = os.Stderr
-
-	if err := c.Run(); err != nil {
-		fmt.Printf("Command exited non-zero, not rebuilding/updating VNFS image\n")
-		// defer is not called before os.Exit(0)
-		err = os.RemoveAll(tempDir)
-		if err != nil {
-			wwlog.Warn("Couldn't remove temp dir for ephermal mounts:", err)
-		}
-		os.Exit(0)
-	}
-	return nil
-}
 
 func CobraRunE(cmd *cobra.Command, args []string) error {
 
@@ -87,7 +47,7 @@ func CobraRunE(cmd *cobra.Command, args []string) error {
 	wwlog.Debug("passwd: %v", passwdTime)
 	wwlog.Debug("group: %v", groupTime)
 
-	err := runContainedCmd(allargs)
+	err := containerrun.RunContainedCmd(tempDir, allargs)
 	if err != nil {
 		wwlog.Error("Failed executing container command: %s", err)
 		os.Exit(1)
@@ -95,7 +55,7 @@ func CobraRunE(cmd *cobra.Command, args []string) error {
 
 	if util.IsFile(path.Join(container.RootFsDir(allargs[0]), "/etc/warewulf/container_exit.sh")) {
 		wwlog.Verbose("Found clean script: /etc/warewulf/container_exit.sh")
-		err = runContainedCmd([]string{allargs[0], "/bin/sh", "/etc/warewulf/container_exit.sh"})
+		err = containerrun.RunContainedCmd(tempDir, []string{allargs[0], "/bin/sh", "/etc/warewulf/container_exit.sh"})
 		if err != nil {
 			wwlog.Error("Failed executing exit script: %s", err)
 			os.Exit(1)
@@ -128,7 +88,7 @@ func CobraRunE(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("Rebuilding container...\n")
-	err = container.Build(containerName, false)
+	err = containerrun.Build(containerName, false)
 	if err != nil {
 		wwlog.Error("Could not build container %s: %s", containerName, err)
 		os.Exit(1)

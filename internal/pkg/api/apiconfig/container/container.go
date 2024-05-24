@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/warewulf/warewulf/internal/pkg/api/routes/wwapiv1"
 	"github.com/warewulf/warewulf/internal/pkg/container"
+	"github.com/warewulf/warewulf/internal/pkg/containerrun"
 	"github.com/warewulf/warewulf/internal/pkg/kernel"
 	"github.com/warewulf/warewulf/internal/pkg/node"
 	"github.com/warewulf/warewulf/internal/pkg/util"
@@ -45,7 +46,7 @@ func ContainerBuild(cbp *wwapiv1.ContainerBuildParameter) (err error) {
 			return
 		}
 
-		err = container.Build(c, cbp.Force)
+		err = containerrun.Build(c, cbp.Force)
 		if err != nil {
 			wwlog.Error("Could not build container %s: %s", c, err)
 			return
@@ -194,7 +195,7 @@ func ContainerImport(cip *wwapiv1.ContainerImportParameter) (containerName strin
 	}
 
 	fmt.Printf("Building container: %s\n", cip.Name)
-	err = container.Build(cip.Name, true)
+	err = containerrun.Build(cip.Name, true)
 	if err != nil {
 		wwlog.Error("Could not build container %s: %s", cip.Name, err)
 		return

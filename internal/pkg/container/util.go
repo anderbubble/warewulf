@@ -81,23 +81,6 @@ func DeleteSource(name string) error {
 	return os.RemoveAll(fullPath)
 }
 
-func Duplicate(name string, destination string) error {
-	fullPathImageSource := RootFsDir(name)
-
-	wwlog.Info("Copying sources...")
-	err := ImportDirectory(fullPathImageSource, destination)
-
-	if err != nil {
-		return err
-	}
-	wwlog.Info("Building container: %s", destination)
-	err = Build(destination, true)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 /*
 Delete the image of a container
 */

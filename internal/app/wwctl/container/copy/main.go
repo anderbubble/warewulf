@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/warewulf/warewulf/internal/pkg/api/routes/wwapiv1"
 	"github.com/warewulf/warewulf/internal/pkg/container"
+	"github.com/warewulf/warewulf/internal/pkg/containerrun"
 	"github.com/warewulf/warewulf/internal/pkg/wwlog"
 )
 
@@ -35,7 +36,7 @@ func CobraRunE(cmd *cobra.Command, args []string) (err error) {
 		return
 	}
 
-	err = container.Duplicate(cdp.ContainerSource, cdp.ContainerDestination)
+	err = containerrun.Duplicate(cdp.ContainerSource, cdp.ContainerDestination)
 	if err != nil {
 		err = fmt.Errorf("could not duplicate image: %s", err.Error())
 		wwlog.Error(err.Error())
