@@ -15,14 +15,11 @@ var (
 	}
 	binds      []string
 	nodename   string
-	overlayDir string
 )
 
 func init() {
 	baseCmd.Flags().StringVarP(&nodename, "node", "n", "", "create ro overlay for given node")
 	baseCmd.Flags().StringArrayVarP(&binds, "bind", "b", []string{}, "bind points")
-	baseCmd.Flags().StringVar(&overlayDir, "overlaydir", "", "overlayDir")
-
 }
 
 // GetRootCommand returns the root cobra.Command for the application.
