@@ -60,7 +60,7 @@ WW_INTERNAL: 0
 	warewulfd.SetNoDaemon()
 	conf.Paths.WWOverlaydir = overlayDir
 
-	_, err = node.Parse([]byte(inDb))
+	_, err = node.ParseNodesConf([]byte(inDb))
 	assert.NoError(t, err)
 	t.Logf("Running test: wwctl overlay import test\n")
 	t.Run("wwctl overlay import test", func(t *testing.T) {

@@ -9,7 +9,7 @@ import (
 )
 
 func Hash() *wwapiv1.NodeDBHash {
-	config, err := node.New()
+	config, err := node.NewNodesConf()
 	if err != nil {
 		wwlog.Warn("couldb't read config")
 	}

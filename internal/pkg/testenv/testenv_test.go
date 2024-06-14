@@ -10,7 +10,7 @@ import (
 func Test_Basic(t *testing.T) {
 	env := New(t)
 	defer env.RemoveAll(t)
-	nodedb, err := node.New()
+	nodedb, err := node.NewNodesConf()
 	assert.NoError(t, err)
 	nodes, err := nodedb.FindAllNodes()
 	assert.NoError(t, err)
@@ -27,7 +27,7 @@ nodes:
   node2: {}
 `)
 	defer env.RemoveAll(t)
-	nodedb, err := node.New()
+	nodedb, err := node.NewNodesConf()
 	assert.NoError(t, err)
 	nodes, err := nodedb.FindAllNodes()
 	assert.NoError(t, err)

@@ -18,7 +18,7 @@ func CobraRunE(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("can't delete the `default` profile ")
 	}
 
-	nodeDB, err := node.New()
+	nodeDB, err := node.NewNodesConf()
 	if err != nil {
 		wwlog.Error("Failed to open node database: %s", err)
 		os.Exit(1)

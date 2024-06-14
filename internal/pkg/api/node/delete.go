@@ -22,7 +22,7 @@ func NodeDelete(ndp *wwapiv1.NodeDeleteParameter) (err error) {
 		return
 	}
 
-	nodeDB, err := node.New()
+	nodeDB, err := node.NewNodesConf()
 	if err != nil {
 		wwlog.Error("Failed to open node database: %s", err)
 		return
@@ -64,7 +64,7 @@ func NodeDeleteParameterCheck(ndp *wwapiv1.NodeDeleteParameter, console bool) (n
 		return
 	}
 
-	nodeDB, err := node.New()
+	nodeDB, err := node.NewNodesConf()
 	if err != nil {
 		wwlog.Error("Failed to open node database: %s", err)
 		return

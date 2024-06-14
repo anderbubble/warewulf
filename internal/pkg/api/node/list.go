@@ -18,7 +18,7 @@ a formated string slice, with each line as separate string
 */
 func NodeList(nodeGet *wwapiv1.GetNodeList) (nodeList wwapiv1.NodeList, err error) {
 	// nil is okay for nodeNames
-	nodeDB, err := node.New()
+	nodeDB, err := node.NewNodesConf()
 	if err != nil {
 		return
 	}

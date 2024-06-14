@@ -4,12 +4,69 @@ import (
 	"fmt"
 	"net"
 	"reflect"
+	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/warewulf/warewulf/internal/pkg/util"
 	"github.com/warewulf/warewulf/internal/pkg/wwtype"
 )
+
+/*
+Node is the datastructure describing a node and a profile which in disk format.
+*/
+type Node struct {
+	id    string
+	valid bool // Is set true, if called by the constructor
+	// exported values
+	Discoverable wwtype.WWbool     `yaml:"discoverable,omitempty" lopt:"discoverable" sopt:"e" comment:"Make discoverable in given network (true/false)"`
+	AssetKey     string            `yaml:"asset key,omitempty" lopt:"asset" comment:"Set the node's Asset tag (key)"`
+	Profiles     []string          `yaml:"profiles,omitempty" lopt:"profile" sopt:"P" comment:"Set the node's profile members (comma separated)"`
+	Profile      `yaml:"-,inline"` // include all values set in the profile, but inline them in yaml output if these are part of Node
+}
+
+/*
+Creates an Node with the given id. Doesn't add it to the database
+*/
+func NewNode(id string) (node Node) {
+	node = EmptyNode()
+	node.id = id
+	fmt.Printf("New node with id: %s", node.id)
+	return node
+}
+
+func EmptyNode() (node Node) {
+	node.Ipmi = new(IPMI)
+	node.Ipmi.Tags = map[string]string{}
+	node.Kernel = new(Kernel)
+	node.NetDevs = make(map[string]*NetDev)
+	node.Tags = map[string]string{}
+	return node
+}
+
+/*
+Returns the id of the node
+*/
+func (node *Node) Id() string {
+	return node.id
+}
+
+/*
+Returns if the node is a valid in the database
+*/
+func (node *Node) Valid() bool {
+	return node.valid
+}
+
+/*
+Flattens out a Node, which means if there are no explicit values in *IPMI
+or *Kernel, these pointer will set to nil. This will remove something like
+ipmi: {} from nodes.conf
+*/
+func (info *Node) Flatten() {
+	recursiveFlatten(info)
+}
 
 /*
 Checks if for Node all values can be parsed according to their type.
@@ -96,3 +153,36 @@ func checker(value string, valType string) (niceValue string, err error) {
 	}
 	return "", nil
 }
+
+/*
+Filter a given slice of Node against a given
+regular expression
+*/
+func FilterByName(set []Node, searchList []string) []Node {
+	var ret []Node
+	unique := make(map[string]Node)
+
+	if len(searchList) > 0 {
+		for _, search := range searchList {
+			for _, entry := range set {
+				if match, _ := regexp.MatchString("^"+search+"$", entry.id); match {
+					unique[entry.id] = entry
+				}
+			}
+		}
+		for _, n := range unique {
+			ret = append(ret, n)
+		}
+	} else {
+		ret = set
+	}
+
+	sort.Sort(sortByName(ret))
+	return ret
+}
+
+type sortByName []Node
+
+func (a sortByName) Len() int           { return len(a) }
+func (a sortByName) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a sortByName) Less(i, j int) bool { return a[i].id < a[j].id }

@@ -36,7 +36,7 @@ NodeSetParameterCheck does error checking and returns a modified
 NodeYml which than can be persisted
 */
 func NodeSetParameterCheck(set *wwapiv1.ConfSetParameter) (nodeDB node.NodesConf, count uint, err error) {
-	nodeDB, err = node.New()
+	nodeDB, err = node.NewNodesConf()
 	if err != nil {
 		wwlog.Error("Could not open configuration: %s", err)
 		return

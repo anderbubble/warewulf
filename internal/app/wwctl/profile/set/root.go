@@ -42,7 +42,7 @@ func GetCommand() *cobra.Command {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
 
-			nodeDB, _ := node.New()
+			nodeDB, _ := node.NewNodesConf()
 			profiles := nodeDB.ListAllProfiles()
 			return profiles, cobra.ShellCompDirectiveNoFileComp
 		},

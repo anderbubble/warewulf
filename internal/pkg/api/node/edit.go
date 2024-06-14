@@ -14,7 +14,7 @@ import (
 Returns the nodes as a yaml string
 */
 func FindAllNodes() *wwapiv1.NodesConf {
-	nodeDB, err := node.New()
+	nodeDB, err := node.NewNodesConf()
 	if err != nil {
 		wwlog.Error("Could not open nodeDB: %s\n", err)
 		os.Exit(1)
@@ -33,7 +33,7 @@ func FindAllNodes() *wwapiv1.NodesConf {
 Returns filtered list of nodes
 */
 func FilteredNodes(nodeList *wwapiv1.NodeList) *wwapiv1.NodesConf {
-	nodeDB, err := node.New()
+	nodeDB, err := node.NewNodesConf()
 	if err != nil {
 		wwlog.Error("Could not open nodeDB: %s\n", err)
 		os.Exit(1)
@@ -52,7 +52,7 @@ func FilteredNodes(nodeList *wwapiv1.NodeList) *wwapiv1.NodesConf {
 Add nodes from yaml
 */
 func NodeAddFromYaml(nodeList *wwapiv1.NodesConf) (err error) {
-	nodeDB, err := node.New()
+	nodeDB, err := node.NewNodesConf()
 	if err != nil {
 		return errors.Wrap(err, "Could not open NodeDB: %s\n")
 	}

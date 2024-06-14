@@ -49,7 +49,7 @@ func CobraRunE(cmd *cobra.Command, args []string) error {
 		if filepath.Ext(overlayFile) != ".ww" {
 			wwlog.Warn("%s lacks the '.ww' suffix, will not be rendered in an overlay", fileName)
 		}
-		nodeDB, err := node.New()
+		nodeDB, err := node.NewNodesConf()
 		if err != nil {
 			return err
 		}

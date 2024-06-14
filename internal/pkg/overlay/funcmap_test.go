@@ -53,7 +53,7 @@ nodes:
   }
 }`
 	wwlog.SetLogLevel(wwlog.DEBUG)
-	config, parse_error := node.Parse([]byte(node_config))
+	config, parse_error := node.ParseNodesConf([]byte(node_config))
 	assert.Empty(t, parse_error)
 
 	nodeInfos, info_error := config.FindAllNodes()

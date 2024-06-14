@@ -50,7 +50,7 @@ func InitStruct(nodeData node.Node) (TemplateStruct, error) {
 	hostname, _ := os.Hostname()
 	tstruct.BuildHost = hostname
 	// controller := warewulfconf
-	nodeDB, err := node.New()
+	nodeDB, err := node.NewNodesConf()
 	if err != nil {
 		return tstruct, err
 	}

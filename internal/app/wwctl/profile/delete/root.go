@@ -18,7 +18,7 @@ var (
 			if len(args) != 0 {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
-			nodeDB, _ := node.New()
+			nodeDB, _ := node.NewNodesConf()
 			return nodeDB.ListAllProfiles(), cobra.ShellCompDirectiveNoFileComp
 		},
 	}

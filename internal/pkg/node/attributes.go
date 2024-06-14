@@ -3,60 +3,10 @@ package node
 import (
 	"net"
 
-	"github.com/warewulf/warewulf/internal/pkg/wwlog"
 	"github.com/warewulf/warewulf/internal/pkg/wwtype"
-	"gopkg.in/yaml.v3"
 )
 
 const undef string = "UNDEF"
-
-/******
- * YAML data representations
- ******/
-/*
-Structure of which goes to disk
-*/
-type NodesConf struct {
-	WWInternal   int `yaml:"WW_INTERNAL,omitempty" json:"WW_INTERNAL,omitempty"`
-	nodeProfiles map[string]*Profile
-	nodes        map[string]*Node
-}
-
-/*
-Node is the datastructure describing a node and a profile which in disk format.
-*/
-type Node struct {
-	id    string
-	valid bool // Is set true, if called by the constructor
-	// exported values
-	Discoverable wwtype.WWbool     `yaml:"discoverable,omitempty" lopt:"discoverable" sopt:"e" comment:"Make discoverable in given network (true/false)"`
-	AssetKey     string            `yaml:"asset key,omitempty" lopt:"asset" comment:"Set the node's Asset tag (key)"`
-	Profiles     []string          `yaml:"profiles,omitempty" lopt:"profile" sopt:"P" comment:"Set the node's profile members (comma separated)"`
-	Profile      `yaml:"-,inline"` // include all values set in the profile, but inline them in yaml output if these are part of Node
-}
-
-/*
-Holds the data which can be set for profiles and nodes.
-*/
-type Profile struct {
-	id string
-	// exported values
-	Comment        string                 `yaml:"comment,omitempty" lopt:"comment" comment:"Set arbitrary string comment"`
-	ClusterName    string                 `yaml:"cluster name,omitempty" lopt:"cluster" sopt:"c" comment:"Set cluster group"`
-	ContainerName  string                 `yaml:"container name,omitempty" lopt:"container" sopt:"C" comment:"Set container name"`
-	Ipxe           string                 `yaml:"ipxe template,omitempty" lopt:"ipxe" comment:"Set the iPXE template name"`
-	RuntimeOverlay []string               `yaml:"runtime overlay,omitempty" lopt:"runtime" sopt:"R" comment:"Set the runtime overlay"`
-	SystemOverlay  []string               `yaml:"system overlay,omitempty" lopt:"wwinit" sopt:"O" comment:"Set the system overlay"`
-	Kernel         *Kernel                `yaml:"kernel,omitempty"`
-	Ipmi           *IPMI                  `yaml:"ipmi,omitempty"`
-	Init           string                 `yaml:"init,omitempty" lopt:"init" sopt:"i" comment:"Define the init process to boot the container"`
-	Root           string                 `yaml:"root,omitempty" lopt:"root" comment:"Define the rootfs" `
-	NetDevs        map[string]*NetDev     `yaml:"network devices,omitempty"`
-	Tags           map[string]string      `yaml:"tags,omitempty"`
-	PrimaryNetDev  string                 `yaml:"primary network,omitempty" lopt:"primarynet" sopt:"p" comment:"Set the primary network interface"`
-	Disks          map[string]*Disk       `yaml:"disks,omitempty"`
-	FileSystems    map[string]*FileSystem `yaml:"filesystems,omitempty"`
-}
 
 type IPMI struct {
 	UserName   string            `yaml:"username,omitempty" lopt:"ipmiuser" comment:"Set the IPMI username"`
@@ -93,6 +43,13 @@ type NetDev struct {
 }
 
 /*
+Check if the netdev is the primary one
+*/
+func (dev *NetDev) Primary() bool {
+	return dev.primary
+}
+
+/*
 Holds the disks of a node
 */
 type Disk struct {
@@ -126,53 +83,4 @@ type FileSystem struct {
 	Uuid           string   `yaml:"uuid,omitempty" comment:"the uuid of the filesystem"`
 	Options        []string `yaml:"options,omitempty" comment:"any additional options to be passed to the format-specific mkfs utility"`
 	MountOptions   string   `yaml:"mount_options,omitempty" comment:"any special options to be passed to the mount command"`
-}
-
-/*
-interface so that nodes and profiles which aren't exported will
-be marshaled
-*/
-type ExportedYml struct {
-	WWInternal   int                 `yaml:"WW_INTERNAL"`
-	NodeProfiles map[string]*Profile `yaml:"nodeprofiles"`
-	Nodes        map[string]*Node    `yaml:"nodes"`
-}
-
-/*
-Marshall Exported stuff, not NodesConf directly
-*/
-func (yml *NodesConf) MarshalYAML() (interface{}, error) {
-	wwlog.Debug("marshall yml")
-	var exp ExportedYml
-	exp.WWInternal = yml.WWInternal
-	exp.Nodes = yml.nodes
-	exp.NodeProfiles = yml.nodeProfiles
-	node := yaml.Node{}
-	err := node.Encode(exp)
-	if err != nil {
-		return node, err
-	}
-	return node, err
-}
-
-/*
-Unmarshal to intermediate format
-*/
-func (yml *NodesConf) UnmarshalYAML(
-	unmarshal func(interface{}) (err error),
-) (err error) {
-	wwlog.Debug("UnmarshalYAML called")
-	var exp ExportedYml
-	err = unmarshal(&exp)
-	if err != nil {
-		return
-	}
-	yml.WWInternal = exp.WWInternal
-	yml.nodes = exp.Nodes
-	yml.nodeProfiles = exp.NodeProfiles
-	return nil
-}
-
-func (yml NodesConf) IsZero() bool {
-	return true
 }

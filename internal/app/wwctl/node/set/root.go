@@ -35,7 +35,7 @@ func GetCommand() *cobra.Command {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
 
-			nodeDB, _ := node.New()
+			nodeDB, _ := node.NewNodesConf()
 			nodes := nodeDB.ListAllNodes()
 			return nodes, cobra.ShellCompDirectiveNoFileComp
 		},
@@ -74,7 +74,7 @@ func GetCommand() *cobra.Command {
 	}
 	if err := baseCmd.RegisterFlagCompletionFunc("profile", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		var list []string
-		nodeDB, _ := node.New()
+		nodeDB, _ := node.NewNodesConf()
 		profiles, _ := nodeDB.FindAllProfiles()
 		for _, profile := range profiles {
 			list = append(list, profile.Id())

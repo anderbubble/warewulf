@@ -85,7 +85,7 @@ nodes:
 	assert.NoError(t, os.MkdirAll(path.Join(conf.Paths.WWOverlaydir, "o1"), 0700))
 	assert.NoError(t, os.WriteFile(path.Join(conf.Paths.WWOverlaydir, "o1", "test_file_o1"), []byte("test file"), 0600))
 	assert.NoError(t, os.MkdirAll(path.Join(conf.Paths.WWOverlaydir, "o2"), 0700))
-	nodeDB, err := node.New()
+	nodeDB, err := node.NewNodesConf()
 	assert.NoError(t, err)
 	for _, tt := range getOverlayFileTests {
 		t.Run(tt.description, func(t *testing.T) {

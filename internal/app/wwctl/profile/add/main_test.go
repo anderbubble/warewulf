@@ -63,7 +63,7 @@ nodes: {}
 			} else {
 				assert.NoError(t, err)
 			}
-			config, configErr := node.New()
+			config, configErr := node.NewNodesConf()
 			assert.NoError(t, configErr)
 			dumpBytes, _ := config.Dump()
 			assert.YAMLEq(t, tt.outDb, string(dumpBytes))

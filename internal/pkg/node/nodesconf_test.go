@@ -230,3 +230,140 @@ func Test_negated_list(t *testing.T) {
 	assert.Equal(list, cleanList(list4))
 	assert.Equal(list, cleanList(list5))
 }
+
+func Test_Empty(t *testing.T) {
+	var netdev NetDev
+	var netdevPtr *NetDev
+
+	t.Run("test for empty", func(t *testing.T) {
+		if ObjectIsEmpty(netdev) != true {
+			t.Errorf("netdev must be empty")
+		}
+	})
+	t.Run("test for non empty", func(t *testing.T) {
+		netdev.Device = "foo"
+		if ObjectIsEmpty(netdev) == true {
+			t.Errorf("netdev must be non empty")
+		}
+	})
+	t.Run("test for nil pointer", func(t *testing.T) {
+		if ObjectIsEmpty(netdevPtr) != true {
+			t.Errorf("netdev must be empty")
+		}
+	})
+	/*
+		t.Run("test for pointer assigned", func(t *testing.T) {
+			netdev.Ipaddr = net.ParseIP("10.10.10.1")
+			netdevPtr = &netdev
+			if ObjectIsEmpty(netdevPtr) == true {
+				t.Errorf("netdev must be empty")
+			}
+		})
+	*/
+}
+
+func TestHash(t *testing.T) {
+	nodeConfYml1 := `
+WW_INTERNAL: 45
+nodeprofiles:
+  default:
+    comment: This profile is automatically included for each node
+  test:
+    comment: This is a test profile
+nodes:
+  n01:
+    discoverable: true
+    profiles:
+    - default
+    network devices:
+      default:
+        ipaddr: 10.0.10.1
+  n02:
+    discoverable: true
+    profiles:
+    - default
+    network devices:
+      default:
+        ipaddr: 10.0.10.2
+`
+	nodeConfYml2 := `
+WW_INTERNAL: 45
+nodeprofiles:
+  default:
+    comment: This profile is automatically included for each node
+  test:
+    comment: This is a test profile
+nodes:
+  n02:
+    discoverable: true
+    profiles:
+    - default
+    network devices:
+      default:
+        ipaddr: 10.0.10.2
+  n01:
+    discoverable: true
+    profiles:
+    - default
+    network devices:
+      default:
+        ipaddr: 10.0.10.1
+`
+	nodeConfYml3 := `
+WW_INTERNAL: 45
+nodeprofiles:
+  default:
+    comment: This profile is automatically included for each node
+  test:
+    comment: This is a test profile
+nodes:
+  n02:
+    discoverable: true
+    profiles:
+    - default
+    network devices:
+      default:
+        ipaddr: 10.0.10.2
+  n01:
+    discoverable: true
+    profiles:
+    - default
+    network devices:
+      default:
+        ipaddr: 10.0.10.3
+`
+	var nodeConf1, nodeConf2, nodeConf3 NodesConf
+	err := yaml.Unmarshal([]byte(nodeConfYml1), &nodeConf1)
+	assert.NoError(t, err)
+	err = yaml.Unmarshal([]byte(nodeConfYml2), &nodeConf2)
+	assert.NoError(t, err)
+	err = yaml.Unmarshal([]byte(nodeConfYml3), &nodeConf3)
+	assert.NoError(t, err)
+
+	t.Run("Same NodesConf with same conf", func(t *testing.T) {
+		var testConf NodesConf
+		err = yaml.Unmarshal([]byte(nodeConfYml1), &testConf)
+		assert.NoError(t, err)
+		if testConf.Hash() != nodeConf1.Hash() {
+			err = yaml.Unmarshal([]byte(nodeConfYml1), nodeConf1)
+			assert.NoError(t, err)
+			t.Errorf("Hashes for same configuration differs: %x != %x", nodeConf1.Hash(), nodeConf1.Hash())
+		}
+	})
+
+	t.Run("Different sorted NodesConf with same conf", func(t *testing.T) {
+		yml1, err := yaml.Marshal(nodeConf1)
+		assert.NoError(t, err)
+		yml2, err := yaml.Marshal(nodeConf2)
+		assert.NoError(t, err)
+		if nodeConf2.Hash() != nodeConf1.Hash() {
+			t.Errorf("Hashes for same configuration differs: %x != %x\njson1:\n%s,yml2:\n%s\n", nodeConf2.Hash(), nodeConf1.Hash(), yml1, yml2)
+		}
+	})
+
+	t.Run("Different NodesConf with different conf", func(t *testing.T) {
+		if nodeConf2.Hash() == nodeConf3.Hash() {
+			t.Errorf("Hashes for different configuration is the same: %x == %x", nodeConf2.Hash(), nodeConf3.Hash())
+		}
+	})
+}

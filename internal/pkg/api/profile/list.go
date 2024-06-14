@@ -15,7 +15,7 @@ Returns the formatted list of profiles as string
 */
 func ProfileList(ShowOpt *wwapiv1.GetProfileList) (profileList wwapiv1.ProfileList, err error) {
 	profileList.Output = []string{}
-	nodeDB, err := node.New()
+	nodeDB, err := node.NewNodesConf()
 	if err != nil {
 		return
 	}

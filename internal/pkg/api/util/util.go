@@ -33,7 +33,7 @@ func CanWriteConfig() (canwrite *wwapiv1.CanWriteConfig, err error) {
 	canwrite = new(wwapiv1.CanWriteConfig)
 	// node is not initialized yet
 	if node.ConfigFile == "" {
-		_, err := node.New()
+		_, err := node.NewNodesConf()
 		if err != nil {
 			canwrite.CanWriteConfig = false
 			return canwrite, fmt.Errorf("unable to initialize the node %w", err)

@@ -1,53 +1,9 @@
 package node
 
 import (
-	"errors"
 	"net"
 	"reflect"
-	"strings"
 )
-
-/*
-Gets a node by its hardware(mac) address
-*/
-func (config *NodesConf) FindByHwaddr(hwa string) (Node, error) {
-	if _, err := net.ParseMAC(hwa); err != nil {
-		return Node{}, errors.New("invalid hardware address: " + hwa)
-	}
-	nodeList, _ := config.FindAllNodes()
-	for _, node := range nodeList {
-		for _, dev := range node.NetDevs {
-			if strings.EqualFold(dev.Hwaddr, hwa) {
-				return node, nil
-			}
-		}
-	}
-
-	return Node{}, ErrNotFound
-}
-
-/*
-Find a node by its ip address
-*/
-func (config *NodesConf) FindByIpaddr(ipaddr string) (Node, error) {
-	addr := net.ParseIP(ipaddr)
-	if addr == nil {
-		return Node{}, errors.New("invalid IP:" + ipaddr)
-	}
-	nodeList, err := config.FindAllNodes()
-	if err != nil {
-		return Node{}, err
-	}
-	for _, node := range nodeList {
-		for _, dev := range node.NetDevs {
-			if dev.Ipaddr.Equal(addr) {
-				return node, nil
-			}
-		}
-	}
-
-	return Node{}, ErrNotFound
-}
 
 /*
 Check if the Object is empty, has no valid values

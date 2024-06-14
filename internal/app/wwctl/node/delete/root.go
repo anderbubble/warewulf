@@ -19,7 +19,7 @@ var (
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
 
-			nodeDB, _ := node.New()
+			nodeDB, _ := node.NewNodesConf()
 			nodes := nodeDB.ListAllNodes()
 			return nodes, cobra.ShellCompDirectiveNoFileComp
 		},

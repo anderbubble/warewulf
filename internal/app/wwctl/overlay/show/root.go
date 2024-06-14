@@ -37,7 +37,7 @@ var (
 func init() {
 	baseCmd.PersistentFlags().StringVarP(&NodeName, "render", "r", "", "node used for the variables in the template")
 	if err := baseCmd.RegisterFlagCompletionFunc("render", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		nodeDB, _ := node.New()
+		nodeDB, _ := node.NewNodesConf()
 		return nodeDB.ListAllNodes(), cobra.ShellCompDirectiveNoFileComp
 	}); err != nil {
 		log.Println(err)

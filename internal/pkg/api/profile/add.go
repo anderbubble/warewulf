@@ -17,7 +17,7 @@ func ProfileAdd(nsp *wwapiv1.NodeAddParameter) error {
 	if nsp == nil {
 		return fmt.Errorf("NodeAddParameter is nill")
 	}
-	nodeDB, err := node.New()
+	nodeDB, err := node.NewNodesConf()
 	if err != nil {
 		return errors.Wrap(err, "Could not open database")
 	}

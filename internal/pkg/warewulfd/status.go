@@ -38,7 +38,7 @@ func LoadNodeStatus() error {
 	var newDB allStatus
 	newDB.Nodes = make(map[string]*NodeStatus)
 
-	DB, err := node.New()
+	DB, err := node.NewNodesConf()
 	if err != nil {
 		return err
 	}

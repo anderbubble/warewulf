@@ -22,7 +22,7 @@ func NodeAdd(nap *wwapiv1.NodeAddParameter) (err error) {
 		return fmt.Errorf("NodeAddParameter is nil")
 	}
 
-	nodeDB, err := node.New()
+	nodeDB, err := node.NewNodesConf()
 	if err != nil {
 		return errors.Wrap(err, "failed to open node database")
 	}

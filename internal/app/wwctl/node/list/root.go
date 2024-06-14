@@ -30,7 +30,7 @@ func GetCommand() *cobra.Command {
 				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
 
-			nodeDB, _ := node.New()
+			nodeDB, _ := node.NewNodesConf()
 			nodes, _ := nodeDB.FindAllNodes()
 			var node_names []string
 			for _, node := range nodes {

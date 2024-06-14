@@ -30,7 +30,7 @@ func LoadNodeDB() error {
 func loadNodeDB() (err error) {
 	TmpMap := make(map[string]string)
 
-	db.yml, err = node.New()
+	db.yml, err = node.NewNodesConf()
 	if err != nil {
 		return
 	}

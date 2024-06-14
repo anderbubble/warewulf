@@ -1,141 +1,12 @@
 package node
 
 import (
-	"fmt"
 	"net"
 	"reflect"
-	"regexp"
-	"sort"
 	"strings"
 
 	"github.com/warewulf/warewulf/internal/pkg/util"
 )
-
-type sortByName []Node
-
-func (a sortByName) Len() int           { return len(a) }
-func (a sortByName) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a sortByName) Less(i, j int) bool { return a[i].id < a[j].id }
-
-/**********
- *
- * Filters
- *
- *********/
-
-/*
-Filter a given slice of Node against a given
-regular expression
-*/
-func FilterByName(set []Node, searchList []string) []Node {
-	var ret []Node
-	unique := make(map[string]Node)
-
-	if len(searchList) > 0 {
-		for _, search := range searchList {
-			for _, entry := range set {
-				if match, _ := regexp.MatchString("^"+search+"$", entry.id); match {
-					unique[entry.id] = entry
-				}
-			}
-		}
-		for _, n := range unique {
-			ret = append(ret, n)
-		}
-	} else {
-		ret = set
-	}
-
-	sort.Sort(sortByName(ret))
-	return ret
-}
-
-/*
-Filter a given map of Node against given regular expression.
-*/
-func FilterNodesByName(inputMap map[string]*Node, searchList []string) (retMap map[string]*Node) {
-	retMap = map[string]*Node{}
-	if len(searchList) > 0 {
-		for _, search := range searchList {
-			for name, nConf := range inputMap {
-				if match, _ := regexp.MatchString("^"+search+"$", name); match {
-					retMap[name] = nConf
-				}
-			}
-		}
-	}
-	return retMap
-}
-
-/*
-Filter a given map of Node against given regular expression.
-*/
-func FilterProfilesByName(inputMap map[string]*Profile, searchList []string) (retMap map[string]*Profile) {
-	retMap = map[string]*Profile{}
-	if len(searchList) > 0 {
-		for _, search := range searchList {
-			for name, nConf := range inputMap {
-				if match, _ := regexp.MatchString("^"+search+"$", name); match {
-					retMap[name] = nConf
-				}
-			}
-		}
-	}
-	return retMap
-}
-
-/*
-Creates an Node with the given id. Doesn't add it to the database
-*/
-func NewNode(id string) (node Node) {
-	node.Ipmi = new(IPMI)
-	node.Ipmi.Tags = map[string]string{}
-	node.Kernel = new(Kernel)
-	node.NetDevs = make(map[string]*NetDev)
-	node.Tags = map[string]string{}
-	node.id = id
-	fmt.Printf("New node with id: %s", node.id)
-	return node
-}
-
-func EmptyNode() (node Node) {
-	node.Ipmi = new(IPMI)
-	node.Ipmi.Tags = map[string]string{}
-	node.Kernel = new(Kernel)
-	node.NetDevs = make(map[string]*NetDev)
-	node.Tags = map[string]string{}
-	return node
-}
-
-/*
-Creates a Profile with the given id. Doesn't add it to the database.
-*/
-func NewProfile(id string) (profileconf Profile) {
-	profileconf.Ipmi = new(IPMI)
-	profileconf.Ipmi.Tags = map[string]string{}
-	profileconf.Kernel = new(Kernel)
-	profileconf.NetDevs = make(map[string]*NetDev)
-	profileconf.Tags = map[string]string{}
-	return profileconf
-}
-
-/*
-Flattens out a Node, which means if there are no explicit values in *IPMI
-or *Kernel, these pointer will set to nil. This will remove something like
-ipmi: {} from nodes.conf
-*/
-func (info *Node) Flatten() {
-	recursiveFlatten(info)
-}
-
-/*
-Flattens out a Profile, which means if there are no explicit values in *IPMI
-or *Kernel, these pointer will set to nil. This will remove something like
-ipmi: {} from nodes.conf
-*/
-func (info *Profile) Flatten() {
-	recursiveFlatten(info)
-}
 
 func recursiveFlatten(obj interface{}) (hasContent bool) {
 	valObj := reflect.ValueOf(obj)
@@ -296,38 +167,6 @@ func getYamlString(myType reflect.StructField, excludeList []string) ([]string, 
 		return []string{ymlStr + ":"}, true
 	}
 	return []string{ymlStr}, true
-}
-
-/*
-Getters for unexported fields
-*/
-
-/*
-Returns the id of the node
-*/
-func (node *Node) Id() string {
-	return node.id
-}
-
-/*
-Returns the id of the profile
-*/
-func (node *Profile) Id() string {
-	return node.id
-}
-
-/*
-Returns if the node is a valid in the database
-*/
-func (node *Node) Valid() bool {
-	return node.valid
-}
-
-/*
-Check if the netdev is the primary one
-*/
-func (dev *NetDev) Primary() bool {
-	return dev.primary
 }
 
 // returns all negated elements which are marked with ! as prefix
