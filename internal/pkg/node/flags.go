@@ -8,7 +8,7 @@ import (
 	"github.com/warewulf/warewulf/internal/pkg/wwtype"
 )
 
-type NodeConfDel struct {
+type NodeDel struct {
 	TagsDel     []string `lopt:"tagdel" comment:"add tags"`
 	IpmiTagsDel []string `lopt:"ipmitagdel" comment:"delete ipmi tags"`
 	NetTagsDel  []string `lopt:"nettagdel" comment:"delete network tags"`
@@ -17,7 +17,7 @@ type NodeConfDel struct {
 	PartDel     string   `lopt:"partdel" comment:"delete the partition from the configuration"`
 	FsDel       string   `lopt:"fsdel" comment:"delete the fs from the configuration"`
 }
-type NodeConfAdd struct {
+type NodeAdd struct {
 	TagsAdd     map[string]string `lopt:"tagadd" comment:"add tags"`
 	IpmiTagsAdd map[string]string `lopt:"ipmitagadd" comment:"add ipmi tags"`
 	NetTagsAdd  map[string]string `lopt:"nettagadd" comment:"add network tags"`
@@ -28,18 +28,18 @@ type NodeConfAdd struct {
 }
 
 /*
-Create cmd line flags from the NodeConf fields. Returns a []func() where every function must be called, as the command line parser returns e.g. netip.IP objects which must be parsed
+Create cmd line flags from the Node fields. Returns a []func() where every function must be called, as the command line parser returns e.g. netip.IP objects which must be parsed
 back to strings.
 */
-func (nodeConf *NodeConf) CreateFlags(baseCmd *cobra.Command) {
-	recursiveCreateFlags(nodeConf, baseCmd)
+func (node *Node) CreateFlags(baseCmd *cobra.Command) {
+	recursiveCreateFlags(node, baseCmd)
 }
 
-func (del *NodeConfDel) CreateDelFlags(baseCmd *cobra.Command) {
+func (del *NodeDel) CreateDelFlags(baseCmd *cobra.Command) {
 	recursiveCreateFlags(del, baseCmd)
 
 }
-func (add *NodeConfAdd) CreateAddFlags(baseCmd *cobra.Command) {
+func (add *NodeAdd) CreateAddFlags(baseCmd *cobra.Command) {
 	recursiveCreateFlags(add, baseCmd)
 
 }

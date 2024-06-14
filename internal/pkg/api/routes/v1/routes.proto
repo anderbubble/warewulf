@@ -168,10 +168,10 @@ message NodeAddParameter {
 	repeated string nodeNames = 10;
 }
 
-// NodeYaml is just the updated YAML config which will be added
+// NodesConf is just the updated YAML config which will be added
 // to nodes.conf (is resused for profile edit)
-message NodeYaml {
-	string nodeConfMapYaml = 1;
+message NodesConf {
+	string NodesConfYaml = 1;
 	string hash = 2;
 }
 

@@ -19,11 +19,11 @@ func CobraRunE(vars *variables) func(cmd *cobra.Command, args []string) (err err
 	return func(cmd *cobra.Command, args []string) error {
 		// remove the default network as the all network values are assigned
 		// to this network
-		if !node.ObjectIsEmpty(vars.nodeConf.NetDevs["UNDEF"]) {
-			netDev := *vars.nodeConf.NetDevs["UNDEF"]
-			vars.nodeConf.NetDevs[vars.nodeAdd.Net] = &netDev
+		if !node.ObjectIsEmpty(vars.node.NetDevs["UNDEF"]) {
+			netDev := *vars.node.NetDevs["UNDEF"]
+			vars.node.NetDevs[vars.nodeAdd.Net] = &netDev
 		}
-		delete(vars.nodeConf.NetDevs, "UNDEF")
+		delete(vars.node.NetDevs, "UNDEF")
 		if vars.nodeAdd.FsName != "" {
 			if !strings.HasPrefix(vars.nodeAdd.FsName, "/dev") {
 				if vars.nodeAdd.FsName == vars.nodeAdd.PartName {
@@ -32,22 +32,22 @@ func CobraRunE(vars *variables) func(cmd *cobra.Command, args []string) (err err
 					return fmt.Errorf("filesystems need to have a underlying blockdev")
 				}
 			}
-			fs := *vars.nodeConf.FileSystems["UNDEF"]
-			vars.nodeConf.FileSystems[vars.nodeAdd.FsName] = &fs
+			fs := *vars.node.FileSystems["UNDEF"]
+			vars.node.FileSystems[vars.nodeAdd.FsName] = &fs
 		}
-		delete(vars.nodeConf.FileSystems, "UNDEF")
+		delete(vars.node.FileSystems, "UNDEF")
 		if vars.nodeAdd.DiskName != "" && vars.nodeAdd.PartName != "" {
-			prt := *vars.nodeConf.Disks["UNDEF"].Partitions["UNDEF"]
-			vars.nodeConf.Disks["UNDEF"].Partitions[vars.nodeAdd.PartName] = &prt
-			delete(vars.nodeConf.Disks["UNDEF"].Partitions, "UNDEF")
-			dsk := *vars.nodeConf.Disks["UNDEF"]
-			vars.nodeConf.Disks[vars.nodeAdd.DiskName] = &dsk
+			prt := *vars.node.Disks["UNDEF"].Partitions["UNDEF"]
+			vars.node.Disks["UNDEF"].Partitions[vars.nodeAdd.PartName] = &prt
+			delete(vars.node.Disks["UNDEF"].Partitions, "UNDEF")
+			dsk := *vars.node.Disks["UNDEF"]
+			vars.node.Disks[vars.nodeAdd.DiskName] = &dsk
 		}
 		if (vars.nodeAdd.DiskName != "") != (vars.nodeAdd.PartName != "") {
 			return fmt.Errorf("partition and disk must be specified")
 		}
-		delete(vars.nodeConf.Disks, "UNDEF")
-		buffer, err := yaml.Marshal(vars.nodeConf)
+		delete(vars.node.Disks, "UNDEF")
+		buffer, err := yaml.Marshal(vars.node)
 		if err != nil {
 			wwlog.Error("Can't marshall nodeInfo", err)
 			os.Exit(1)
@@ -55,7 +55,7 @@ func CobraRunE(vars *variables) func(cmd *cobra.Command, args []string) (err err
 		wwlog.Debug("sending following values: %s", string(buffer))
 		args = hostlist.Expand(args)
 		set := wwapiv1.ConfSetParameter{
-			NodeConfYaml: string(buffer),
+			NodeYaml: string(buffer),
 
 			NetdevDelete:     vars.nodeDel.NetDel,
 			PartitionDelete:  vars.nodeDel.PartDel,

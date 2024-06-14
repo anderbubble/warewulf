@@ -8,7 +8,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func NewUtilTestNode() (NodeYaml, error) {
+func NewUtilTestNode() (NodesConf, error) {
 	var data = `
 nodeprofiles:
   default:
@@ -41,7 +41,7 @@ nodes:
         default: false
         ipaddr: fd1a:2b3c:4d5e:06f0:1234:5678:90ab:cdef
 `
-	var ret NodeYaml
+	var ret NodesConf
 	err := yaml.Unmarshal([]byte(data), &ret)
 	if err != nil {
 		return ret, err
@@ -49,20 +49,16 @@ nodes:
 	return ret, nil
 }
 
-func Test_nodeYaml_FindByHwaddr(t *testing.T) {
+func Test_NodesConf_FindByHwaddr(t *testing.T) {
 	c, err := NewUtilTestNode()
 	assert.NoError(t, err)
-	//type fields struct {
-	//	NodeProfiles map[string]*NodeConf
-	//	Nodes        map[string]*NodeConf
-	//}
 	type args struct {
 		hwa string
 	}
 	tests := []struct {
 		name string
 		//fields  fields
-		config  NodeYaml
+		config  NodesConf
 		args    args
 		want    string
 		wantErr bool
@@ -91,7 +87,7 @@ func Test_nodeYaml_FindByHwaddr(t *testing.T) {
 	}
 }
 
-func Test_nodeYaml_FindByIpaddr(t *testing.T) {
+func Test_NodesConf_FindByIpaddr(t *testing.T) {
 	wwlog.SetLogLevel(wwlog.DEBUG)
 	c, err := NewUtilTestNode()
 	assert.NoError(t, err)
@@ -100,7 +96,7 @@ func Test_nodeYaml_FindByIpaddr(t *testing.T) {
 	}
 	tests := []struct {
 		name    string
-		config  NodeYaml
+		config  NodesConf
 		args    args
 		want    string
 		wantErr bool

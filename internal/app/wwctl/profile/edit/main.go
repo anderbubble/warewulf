@@ -41,22 +41,22 @@ func CobraRunE(cmd *cobra.Command, args []string) error {
 		Output: args,
 	}
 	profileListMsg := apiprofile.FilteredProfiles(&filterList)
-	profileMap := make(map[string]*node.NodeConf)
+	profileMap := make(map[string]*node.Node)
 	// got proper yaml back
-	_ = yaml.Unmarshal([]byte(profileListMsg.NodeConfMapYaml), profileMap)
+	_ = yaml.Unmarshal([]byte(profileListMsg.NodesConfYaml), profileMap)
 	file, err := os.CreateTemp(os.TempDir(), "ww4ProfileEdit*.yaml")
 	if err != nil {
 		wwlog.Error("Could not create temp file:%s \n", err)
 	}
 	defer os.Remove(file.Name())
-	yamlTemplate := node.UnmarshalConf(node.NodeConf{}, []string{"tagsdel"})
+	yamlTemplate := node.UnmarshalConf(node.Node{}, []string{"tagsdel"})
 	for {
 		_ = file.Truncate(0)
 		_, _ = file.Seek(0, 0)
 		if !NoHeader {
 			_, _ = file.WriteString("#profilename:\n#  " + strings.Join(yamlTemplate, "\n#  ") + "\n")
 		}
-		_, _ = file.WriteString(profileListMsg.NodeConfMapYaml)
+		_, _ = file.WriteString(profileListMsg.NodesConfYaml)
 		_, _ = file.Seek(0, 0)
 		hasher := sha256.New()
 		if _, err := io.Copy(hasher, file); err != nil {
@@ -77,7 +77,7 @@ func CobraRunE(cmd *cobra.Command, args []string) error {
 		wwlog.Debug("Hashes are before %s and after %s\n", sum1, sum2)
 		if sum1 != sum2 {
 			wwlog.Debug("Profiles were modified")
-			modifiedProfileMap := make(map[string]*node.NodeConf)
+			modifiedProfileMap := make(map[string]*node.Node)
 			_, _ = file.Seek(0, 0)
 			// ignore error as only may occurs under strange circumstances
 			buffer, _ := io.ReadAll(file)
@@ -121,8 +121,8 @@ func CobraRunE(cmd *cobra.Command, args []string) error {
 				buffer, _ = yaml.Marshal(modifiedProfileMap)
 				newHash := apinode.Hash()
 				err = apiprofile.ProfileAddFromYaml(&wwapiv1.NodeAddParameter{
-					NodeConfYaml: string(buffer),
-					Hash:         newHash.Hash,
+					NodeYaml: string(buffer),
+					Hash:     newHash.Hash,
 				})
 				if err != nil {
 					wwlog.Error("Got following problem when writing back yaml: %s", err)

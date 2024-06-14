@@ -41,22 +41,22 @@ func CobraRunE(cmd *cobra.Command, args []string) error {
 		Output: args,
 	}
 	nodeListMsg := apinode.FilteredNodes(&filterList)
-	nodeMap := make(map[string]*node.NodeConf)
+	nodeMap := make(map[string]*node.Node)
 	// got proper yaml back
-	_ = yaml.Unmarshal([]byte(nodeListMsg.NodeConfMapYaml), nodeMap)
+	_ = yaml.Unmarshal([]byte(nodeListMsg.NodesConfYaml), nodeMap)
 	file, err := os.CreateTemp(os.TempDir(), "ww4NodeEdit*.yaml")
 	if err != nil {
 		wwlog.Error("Could not create temp file:%s \n", err)
 	}
 	defer os.Remove(file.Name())
-	yamlTemplate := node.UnmarshalConf(node.NodeConf{}, []string{"tagsdel", "default", "profiles"})
+	yamlTemplate := node.UnmarshalConf(node.Node{}, []string{"tagsdel", "default", "profiles"})
 	for {
 		_ = file.Truncate(0)
 		_, _ = file.Seek(0, 0)
 		if !NoHeader {
 			_, _ = file.WriteString("#nodename:\n#  " + strings.Join(yamlTemplate, "\n#  ") + "\n")
 		}
-		_, _ = file.WriteString(nodeListMsg.NodeConfMapYaml)
+		_, _ = file.WriteString(nodeListMsg.NodesConfYaml)
 		_, _ = file.Seek(0, 0)
 		hasher := sha256.New()
 		if _, err := io.Copy(hasher, file); err != nil {
@@ -77,7 +77,7 @@ func CobraRunE(cmd *cobra.Command, args []string) error {
 		wwlog.Debug("Hashes are before %s and after %s\n", sum1, sum2)
 		if sum1 != sum2 {
 			wwlog.Debug("Nodes were modified")
-			modifiedNodeMap := make(map[string]*node.NodeConf)
+			modifiedNodeMap := make(map[string]*node.Node)
 			_, _ = file.Seek(0, 0)
 			// ignore error as only may occurs under strange circumstances
 			buffer, _ := io.ReadAll(file)
@@ -120,8 +120,8 @@ func CobraRunE(cmd *cobra.Command, args []string) error {
 				}
 				buffer, _ = yaml.Marshal(modifiedNodeMap)
 				newHash := apinode.Hash()
-				err = apinode.NodeAddFromYaml(&wwapiv1.NodeYaml{
-					NodeConfMapYaml: string(buffer),
+				err = apinode.NodeAddFromYaml(&wwapiv1.NodesConf{
+					NodesConfYaml: string(buffer),
 					Hash:            newHash.Hash,
 				})
 				if err != nil {

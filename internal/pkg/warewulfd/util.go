@@ -44,7 +44,7 @@ func sendFile(
 	return nil
 }
 
-func getOverlayFile(n node.NodeConf, context string, stage_overlays []string, autobuild bool) (stage_file string, err error) {
+func getOverlayFile(n node.Node, context string, stage_overlays []string, autobuild bool) (stage_file string, err error) {
 
 	stage_file = overlay.OverlayImage(n.Id(), context, stage_overlays)
 	err = nil

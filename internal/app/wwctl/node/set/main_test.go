@@ -572,10 +572,10 @@ nodes:
 	assert.NoError(t, tempWarewulfConf.Sync())
 	assert.NoError(t, warewulfconf.New().Read(tempWarewulfConf.Name()))
 
-	tempNodeConf, nodesConfErr := os.CreateTemp("", "nodes.conf-")
+	tempNode, nodesConfErr := os.CreateTemp("", "nodes.conf-")
 	assert.NoError(t, nodesConfErr)
-	defer os.Remove(tempNodeConf.Name())
-	node.ConfigFile = tempNodeConf.Name()
+	defer os.Remove(tempNode.Name())
+	node.ConfigFile = tempNode.Name()
 	warewulfd.SetNoDaemon()
 	for _, tt := range tests {
 		run_test(t, tt)

@@ -37,9 +37,9 @@ func NodeAdd(nap *wwapiv1.NodeAddParameter) (err error) {
 		if err != nil {
 			return errors.Wrap(err, "failed to add node")
 		}
-		err = yaml.Unmarshal([]byte(nap.NodeConfYaml), &n)
+		err = yaml.Unmarshal([]byte(nap.NodeYaml), &n)
 		if err != nil {
-			return errors.Wrap(err, "Failed to decode nodeConf")
+			return errors.Wrap(err, "Failed to decode node")
 		}
 		wwlog.Info("Added node: %s:", a)
 		for _, dev := range n.NetDevs {

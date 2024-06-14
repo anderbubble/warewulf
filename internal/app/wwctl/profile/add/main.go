@@ -51,9 +51,9 @@ func CobraRunE(vars *variables) func(cmd *cobra.Command, args []string) (err err
 			return err
 		}
 		set := wwapiv1.NodeAddParameter{
-			NodeConfYaml: string(buffer[:]),
-			NodeNames:    args,
-			Force:        true,
+			NodeYaml:  string(buffer[:]),
+			NodeNames: args,
+			Force:     true,
 		}
 		return apiprofile.ProfileAdd(&set)
 	}

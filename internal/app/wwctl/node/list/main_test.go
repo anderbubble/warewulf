@@ -321,19 +321,19 @@ n01   Profiles                  p1
 	assert.NoError(t, tempWarewulfConf.Sync())
 	assert.NoError(t, warewulfconf.New().Read(tempWarewulfConf.Name()))
 
-	tempNodeConf, nodesConfErr := os.CreateTemp("", "nodes.conf-")
+	tempNode, nodesConfErr := os.CreateTemp("", "nodes.conf-")
 	assert.NoError(t, nodesConfErr)
-	defer os.Remove(tempNodeConf.Name())
-	node.ConfigFile = tempNodeConf.Name()
+	defer os.Remove(tempNode.Name())
+	node.ConfigFile = tempNode.Name()
 	warewulfd.SetNoDaemon()
 	for _, tt := range tests {
 		var err error
-		_, err = tempNodeConf.Seek(0, 0)
+		_, err = tempNode.Seek(0, 0)
 		assert.NoError(t, err)
-		assert.NoError(t, tempNodeConf.Truncate(0))
-		_, err = tempNodeConf.Write([]byte(tt.inDb))
+		assert.NoError(t, tempNode.Truncate(0))
+		_, err = tempNode.Write([]byte(tt.inDb))
 		assert.NoError(t, err)
-		assert.NoError(t, tempNodeConf.Sync())
+		assert.NoError(t, tempNode.Sync())
 
 		t.Run(tt.name, func(t *testing.T) {
 			baseCmd := GetCommand()

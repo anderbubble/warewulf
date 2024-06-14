@@ -12,7 +12,7 @@ import (
 
 type variables struct {
 	netName      string
-	profileConf  node.NodeConf
+	profileConf  node.Node
 	SetNetDevDel string
 	SetNodeAll   bool
 	SetYes       bool

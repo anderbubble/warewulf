@@ -53,16 +53,16 @@ func CobraRunE(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		nodeConf, err := nodeDB.GetNode(NodeName)
+		node_, err := nodeDB.GetNode(NodeName)
 		if err == node.ErrNotFound {
 			hostName, err := os.Hostname()
 			if err != nil {
 				wwlog.Error("Could not get host name: %s", err)
 			}
-			nodeConf = node.NewNode(hostName)
-			nodeConf.ClusterName = hostName
+			node_ = node.NewNode(hostName)
+			node_.ClusterName = hostName
 		}
-		tstruct, err := overlay.InitStruct(nodeConf)
+		tstruct, err := overlay.InitStruct(node_)
 		if err != nil {
 			return err
 		}

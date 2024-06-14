@@ -38,9 +38,9 @@ func (f *NodeFields) Set(src, val string) {
 type fieldMap map[string]*NodeFields
 
 /*
-Get all the info out of NodeConf. If emptyFields is set true, all fields are shown not only the ones with effective values
+Get all the info out of Node. If emptyFields is set true, all fields are shown not only the ones with effective values
 */
-func (nodeYml *NodeYaml) GetFields(node NodeConf) (output []NodeFields) {
+func (nodeYml *NodesConf) GetFields(node Node) (output []NodeFields) {
 	nodeMap := make(fieldMap)
 	for _, p := range node.Profiles {
 		if profile, ok := nodeYml.nodeProfiles[p]; ok {
@@ -61,9 +61,9 @@ func (nodeYml *NodeYaml) GetFields(node NodeConf) (output []NodeFields) {
 }
 
 /*
-Get all the info out of ProfileConf. If emptyFields is set true, all fields are shown not only the ones with effective values
+Get all the info out of Profile. If emptyFields is set true, all fields are shown not only the ones with effective values
 */
-func (nodeYml *NodeYaml) GetFieldsProfile(profile ProfileConf) (output []NodeFields) {
+func (nodeYml *NodesConf) GetFieldsProfile(profile Profile) (output []NodeFields) {
 	profileMap := make(fieldMap)
 	profileMap.recursiveFields(&profile, "", "")
 	for _, elem := range profileMap {
@@ -78,7 +78,7 @@ func (nodeYml *NodeYaml) GetFieldsProfile(profile ProfileConf) (output []NodeFie
 }
 
 /*
-Internal function which travels through all fields of a NodeConf and for this
+Internal function which travels through all fields of a Node and for this
 reason needs to be called via interface{}
 */
 func (fieldMap fieldMap) recursiveFields(obj interface{}, prefix string, source string) {

@@ -268,7 +268,7 @@ func Test_BuildAllOverlays(t *testing.T) {
 			defer os.RemoveAll(provisionDir)
 			conf.Paths.WWProvisiondir = provisionDir
 
-			var nodes []node.NodeConf
+			var nodes []node.Node
 			for i, nodeName := range tt.nodes {
 				nodeInfo := node.NewNode(nodeName)
 				if tt.systemOverlays != nil {
@@ -366,7 +366,7 @@ func Test_BuildSpecificOverlays(t *testing.T) {
 			defer os.RemoveAll(provisionDir)
 			conf.Paths.WWProvisiondir = provisionDir
 
-			var nodes []node.NodeConf
+			var nodes []node.Node
 			for _, nodeName := range tt.nodes {
 				nodeInfo := node.NewNode(nodeName)
 				nodes = append(nodes, nodeInfo)

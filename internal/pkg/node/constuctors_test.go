@@ -8,7 +8,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func newConstructorPrimaryNetworkTest(t *testing.T) NodeYaml {
+func newConstructorPrimaryNetworkTest(t *testing.T) NodesConf {
 	var data = `
 nodeprofiles:
   default:
@@ -53,7 +53,7 @@ nodes:
       override:
         device: ib1
   `
-	var ret NodeYaml
+	var ret NodesConf
 	err := yaml.Unmarshal([]byte(data), &ret)
 	assert.NoError(t, err)
 	return ret
@@ -194,13 +194,13 @@ nodes:
       - profile2
 `
 	assert := assert.New(t)
-	var ymlSrc NodeYaml
+	var ymlSrc NodesConf
 	err := yaml.Unmarshal([]byte(nodesconf), &ymlSrc)
 	assert.NoError(err)
 	wwlog.SetLogLevel(wwlog.DEBUG)
 	nodes, err := ymlSrc.FindAllNodes()
 	assert.NoError(err)
-	nodemap := make(map[string]*NodeConf)
+	nodemap := make(map[string]*Node)
 	for i := range nodes {
 		nodemap[nodes[i].Id()] = &nodes[i]
 	}

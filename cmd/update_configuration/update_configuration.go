@@ -57,8 +57,8 @@ func printB(x bool) string {
 	return "false"
 }
 
-func update42to43(conf42 vers42.NodeConf) vers43.NodeConf {
-	ret := vers43.NodeConf{
+func update42to43(conf42 vers42.Node) vers43.Node {
+	ret := vers43.Node{
 		Comment:       conf42.Comment,
 		ClusterName:   conf42.ClusterName,
 		ContainerName: conf42.ContainerName,
@@ -74,7 +74,7 @@ func update42to43(conf42 vers42.NodeConf) vers43.NodeConf {
 		ret.SystemOverlay = []string{conf42.SystemOverlay}
 	}
 	if conf42.KernelArgs != "" || conf42.KernelVersion != "" {
-		ret.Kernel = new(vers43.KernelConf)
+		ret.Kernel = new(vers43.Kernel)
 		ret.Kernel.Override = conf42.KernelVersion
 		ret.Kernel.Args = conf42.KernelArgs
 
@@ -82,7 +82,7 @@ func update42to43(conf42 vers42.NodeConf) vers43.NodeConf {
 	if conf42.IpmiUserName != "" || conf42.IpmiPassword != "" || conf42.IpmiIpaddr != "" ||
 		conf42.IpmiNetmask != "" || conf42.IpmiPort != "" || conf42.IpmiGateway != "" ||
 		conf42.IpmiInterface != "" {
-		ret.Ipmi = new(vers43.IpmiConf)
+		ret.Ipmi = new(vers43.IPMI)
 		ret.Ipmi.UserName = conf42.IpmiUserName
 		ret.Ipmi.Password = conf42.IpmiPassword
 		ret.Ipmi.Ipaddr = conf42.IpmiIpaddr
@@ -97,9 +97,9 @@ func update42to43(conf42 vers42.NodeConf) vers43.NodeConf {
 			ret.Keys[k] = v
 		}
 	}
-	ret.NetDevs = make(map[string]*vers43.NetDevs)
+	ret.NetDevs = make(map[string]*vers43.NetDev)
 	for devn, netdev := range conf42.NetDevs {
-		var device vers43.NetDevs = vers43.NetDevs{
+		var device vers43.NetDev = vers43.NetDev{
 			Type:    netdev.Type,
 			Device:  devn,
 			Primary: printB(netdev.Default),
@@ -153,13 +153,13 @@ func main() {
 	if startVers == 0 && getConf.WWInternal == 0 {
 		startVers = 42
 	}
-	var conf42 vers42.NodeYaml
-	conf42.NodeProfiles = make(map[string]*vers42.NodeConf)
-	conf42.Nodes = make(map[string]*vers42.NodeConf)
+	var conf42 vers42.NodesConf
+	conf42.NodeProfiles = make(map[string]*vers42.Node)
+	conf42.Nodes = make(map[string]*vers42.Node)
 
-	var conf43 vers43.NodeYaml
-	conf43.NodeProfiles = make(map[string]*vers43.NodeConf)
-	conf43.Nodes = make(map[string]*vers43.NodeConf)
+	var conf43 vers43.NodesConf
+	conf43.NodeProfiles = make(map[string]*vers43.Node)
+	conf43.Nodes = make(map[string]*vers43.Node)
 	conf43.WWInternal = 43
 
 	if startVers == 42 {

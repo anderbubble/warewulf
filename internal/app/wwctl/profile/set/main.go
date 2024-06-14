@@ -54,7 +54,7 @@ func CobraRunE(vars *variables) func(cmd *cobra.Command, args []string) (err err
 		}
 		wwlog.Debug("sending following values: %s", string(buffer))
 		set := wwapiv1.ConfSetParameter{
-			NodeConfYaml:     string(buffer[:]),
+			NodeYaml:         string(buffer[:]),
 			NetdevDelete:     vars.setNetDevDel,
 			PartitionDelete:  vars.setPartDel,
 			DiskDelete:       vars.setDiskDel,

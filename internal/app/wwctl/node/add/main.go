@@ -22,12 +22,12 @@ func CobraRunE(vars *variables) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
 		// remove the UNDEF network as all network values are assigned
 		// to this network
-		if !node.ObjectIsEmpty(vars.nodeConf.NetDevs["UNDEF"]) {
-			netDev := *vars.nodeConf.NetDevs["UNDEF"]
-			vars.nodeConf.NetDevs[vars.netName] = &netDev
+		if !node.ObjectIsEmpty(vars.node.NetDevs["UNDEF"]) {
+			netDev := *vars.node.NetDevs["UNDEF"]
+			vars.node.NetDevs[vars.netName] = &netDev
 			fmt.Println("not empty")
 		}
-		delete(vars.nodeConf.NetDevs, "UNDEF")
+		delete(vars.node.NetDevs, "UNDEF")
 		if vars.fsName != "" {
 			if !strings.HasPrefix(vars.fsName, "/dev") {
 				if vars.fsName == vars.partName {
@@ -36,33 +36,33 @@ func CobraRunE(vars *variables) func(cmd *cobra.Command, args []string) error {
 					return fmt.Errorf("filesystems need to have a underlying blockdev")
 				}
 			}
-			fs := *vars.nodeConf.FileSystems["UNDEF"]
-			vars.nodeConf.FileSystems[vars.fsName] = &fs
+			fs := *vars.node.FileSystems["UNDEF"]
+			vars.node.FileSystems[vars.fsName] = &fs
 		}
-		delete(vars.nodeConf.FileSystems, "UNDEF")
+		delete(vars.node.FileSystems, "UNDEF")
 		if vars.diskName != "" && vars.partName != "" {
-			prt := *vars.nodeConf.Disks["UNDEF"].Partitions["UNDEF"]
-			vars.nodeConf.Disks["UNDEF"].Partitions[vars.partName] = &prt
-			delete(vars.nodeConf.Disks["UNDEF"].Partitions, "UNDEF")
-			dsk := *vars.nodeConf.Disks["UNDEF"]
-			vars.nodeConf.Disks[vars.diskName] = &dsk
+			prt := *vars.node.Disks["UNDEF"].Partitions["UNDEF"]
+			vars.node.Disks["UNDEF"].Partitions[vars.partName] = &prt
+			delete(vars.node.Disks["UNDEF"].Partitions, "UNDEF")
+			dsk := *vars.node.Disks["UNDEF"]
+			vars.node.Disks[vars.diskName] = &dsk
 		}
 		if (vars.diskName != "") != (vars.partName != "") {
 			return fmt.Errorf("partition and disk must be specified")
 		}
-		delete(vars.nodeConf.Disks, "UNDEF")
-		if len(vars.nodeConf.Profiles) == 0 {
-			vars.nodeConf.Profiles = []string{"default"}
+		delete(vars.node.Disks, "UNDEF")
+		if len(vars.node.Profiles) == 0 {
+			vars.node.Profiles = []string{"default"}
 		}
-		buffer, err := yaml.Marshal(vars.nodeConf)
+		buffer, err := yaml.Marshal(vars.node)
 		if err != nil {
 			wwlog.Error("Can't marshall nodeInfo", err)
 			return err
 		}
 		set := wwapiv1.NodeAddParameter{
-			NodeConfYaml: string(buffer[:]),
-			NodeNames:    args,
-			Force:        true,
+			NodeYaml:  string(buffer[:]),
+			NodeNames: args,
+			Force:     true,
 		}
 		return apinode.NodeAdd(&set)
 	}

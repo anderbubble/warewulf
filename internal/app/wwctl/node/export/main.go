@@ -16,11 +16,6 @@ func CobraRunE(cmd *cobra.Command, args []string) error {
 		Output: args,
 	}
 	nodeListMsg := apinode.FilteredNodes(&filterList)
-	/*
-		nodeMap := make(map[string]*node.NodeConf)
-		// got proper yaml back
-		_ = yaml.Unmarshal([]byte(nodeListMsg.NodeConfMapYaml), nodeMap)
-	*/
-	fmt.Println(nodeListMsg.NodeConfMapYaml)
+	fmt.Println(nodeListMsg.NodesConfYaml)
 	return nil
 }

@@ -13,7 +13,7 @@ import (
 /*
 Returns the nodes as a yaml string
 */
-func FindAllNodeConfs() *wwapiv1.NodeYaml {
+func FindAllNodes() *wwapiv1.NodesConf {
 	nodeDB, err := node.New()
 	if err != nil {
 		wwlog.Error("Could not open nodeDB: %s\n", err)
@@ -22,8 +22,8 @@ func FindAllNodeConfs() *wwapiv1.NodeYaml {
 	nodeMap, _ := nodeDB.FindAllNodes()
 	// ignore err as nodeDB should always be correct
 	buffer, _ := yaml.Marshal(nodeMap)
-	retVal := wwapiv1.NodeYaml{
-		NodeConfMapYaml: string(buffer),
+	retVal := wwapiv1.NodesConf{
+		NodesConfYaml: string(buffer),
 		Hash:            nodeDB.StringHash(),
 	}
 	return &retVal
@@ -32,7 +32,7 @@ func FindAllNodeConfs() *wwapiv1.NodeYaml {
 /*
 Returns filtered list of nodes
 */
-func FilteredNodes(nodeList *wwapiv1.NodeList) *wwapiv1.NodeYaml {
+func FilteredNodes(nodeList *wwapiv1.NodeList) *wwapiv1.NodesConf {
 	nodeDB, err := node.New()
 	if err != nil {
 		wwlog.Error("Could not open nodeDB: %s\n", err)
@@ -41,8 +41,8 @@ func FilteredNodes(nodeList *wwapiv1.NodeList) *wwapiv1.NodeYaml {
 	nodeMap, _ := nodeDB.FindAllNodes()
 	nodeMap = node.FilterByName(nodeMap, nodeList.Output)
 	buffer, _ := yaml.Marshal(nodeMap)
-	retVal := wwapiv1.NodeYaml{
-		NodeConfMapYaml: string(buffer),
+	retVal := wwapiv1.NodesConf{
+		NodesConfYaml: string(buffer),
 		Hash:            nodeDB.StringHash(),
 	}
 	return &retVal
@@ -51,13 +51,13 @@ func FilteredNodes(nodeList *wwapiv1.NodeList) *wwapiv1.NodeYaml {
 /*
 Add nodes from yaml
 */
-func NodeAddFromYaml(nodeList *wwapiv1.NodeYaml) (err error) {
+func NodeAddFromYaml(nodeList *wwapiv1.NodesConf) (err error) {
 	nodeDB, err := node.New()
 	if err != nil {
 		return errors.Wrap(err, "Could not open NodeDB: %s\n")
 	}
-	nodeMap := make(map[string]*node.NodeConf)
-	err = yaml.Unmarshal([]byte(nodeList.NodeConfMapYaml), nodeMap)
+	nodeMap := make(map[string]*node.Node)
+	err = yaml.Unmarshal([]byte(nodeList.NodesConfYaml), nodeMap)
 	if err != nil {
 		return errors.Wrap(err, "Could not unmarshal Yaml: %s\n")
 	}

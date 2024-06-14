@@ -29,7 +29,7 @@ func ProfileAdd(nsp *wwapiv1.NodeAddParameter) error {
 		if err != nil {
 			return err
 		}
-		err = yaml.Unmarshal([]byte(nsp.NodeConfYaml), &pNew)
+		err = yaml.Unmarshal([]byte(nsp.NodeYaml), &pNew)
 		if err != nil {
 			return errors.Wrap(err, "failed to add profile")
 		}

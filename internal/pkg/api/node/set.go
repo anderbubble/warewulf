@@ -17,7 +17,7 @@ func NodeSet(set *wwapiv1.ConfSetParameter) (err error) {
 	if set == nil {
 		return fmt.Errorf("NodeSetParameter is nil")
 	}
-	var nodeDB node.NodeYaml
+	var nodeDB node.NodesConf
 	nodeDB, _, err = NodeSetParameterCheck(set)
 	if err != nil {
 		return err
@@ -35,13 +35,12 @@ func NodeSet(set *wwapiv1.ConfSetParameter) (err error) {
 NodeSetParameterCheck does error checking and returns a modified
 NodeYml which than can be persisted
 */
-func NodeSetParameterCheck(set *wwapiv1.ConfSetParameter) (nodeDB node.NodeYaml, count uint, err error) {
+func NodeSetParameterCheck(set *wwapiv1.ConfSetParameter) (nodeDB node.NodesConf, count uint, err error) {
 	nodeDB, err = node.New()
 	if err != nil {
 		wwlog.Error("Could not open configuration: %s", err)
 		return
 	}
-	//func AbstractSetParameterCheck(set *wwapiv1.ConfSetParameter, confMap map[string]*node.NodeConf, confs []string) (count uint, err error) {
 	if set == nil {
 		err = fmt.Errorf("profile set parameter is nil")
 		return
@@ -61,14 +60,14 @@ func NodeSetParameterCheck(set *wwapiv1.ConfSetParameter) (nodeDB node.NodeYaml,
 	for _, nId := range set.ConfList {
 		if util.InSlice(set.ConfList, nId) {
 			wwlog.Debug("evaluating node: %s", nId)
-			var nodePtr *node.NodeConf
+			var nodePtr *node.Node
 			nodePtr, err = nodeDB.GetNodeOnlyPtr(nId)
 			if err != nil {
 				wwlog.Warn("invalid node: %s", nId)
 				continue
 			}
 			newConf := node.EmptyNode()
-			err = yaml.Unmarshal([]byte(set.NodeConfYaml), &newConf)
+			err = yaml.Unmarshal([]byte(set.NodeYaml), &newConf)
 			if err != nil {
 				return
 			}

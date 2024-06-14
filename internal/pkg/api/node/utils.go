@@ -13,7 +13,7 @@ import (
 // or restarting warewulfd. Determine if the reason for restart is
 // just to reinitialize warewulfd with the new nodeDB or if there is
 // something more to it.
-func DbSave(nodeDB *node.NodeYaml) (err error) {
+func DbSave(nodeDB *node.NodesConf) (err error) {
 	err = nodeDB.Persist()
 	if err != nil {
 		return errors.Wrap(err, "failed to persist nodedb")

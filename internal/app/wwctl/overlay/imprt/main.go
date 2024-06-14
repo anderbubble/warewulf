@@ -78,7 +78,7 @@ func CobraRunE(cmd *cobra.Command, args []string) error {
 			os.Exit(1)
 		}
 
-		var updateNodes []node.NodeConf
+		var updateNodes []node.Node
 
 		for _, node := range nodes {
 			if util.InSlice(node.SystemOverlay, overlayName) {

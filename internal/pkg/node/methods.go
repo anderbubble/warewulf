@@ -11,7 +11,7 @@ import (
 	"github.com/warewulf/warewulf/internal/pkg/util"
 )
 
-type sortByName []NodeConf
+type sortByName []Node
 
 func (a sortByName) Len() int           { return len(a) }
 func (a sortByName) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
@@ -24,12 +24,12 @@ func (a sortByName) Less(i, j int) bool { return a[i].id < a[j].id }
  *********/
 
 /*
-Filter a given slice of NodeConf against a given
+Filter a given slice of Node against a given
 regular expression
 */
-func FilterByName(set []NodeConf, searchList []string) []NodeConf {
-	var ret []NodeConf
-	unique := make(map[string]NodeConf)
+func FilterByName(set []Node, searchList []string) []Node {
+	var ret []Node
+	unique := make(map[string]Node)
 
 	if len(searchList) > 0 {
 		for _, search := range searchList {
@@ -51,10 +51,10 @@ func FilterByName(set []NodeConf, searchList []string) []NodeConf {
 }
 
 /*
-Filter a given map of NodeConf against given regular expression.
+Filter a given map of Node against given regular expression.
 */
-func FilterNodesByName(inputMap map[string]*NodeConf, searchList []string) (retMap map[string]*NodeConf) {
-	retMap = map[string]*NodeConf{}
+func FilterNodesByName(inputMap map[string]*Node, searchList []string) (retMap map[string]*Node) {
+	retMap = map[string]*Node{}
 	if len(searchList) > 0 {
 		for _, search := range searchList {
 			for name, nConf := range inputMap {
@@ -68,10 +68,10 @@ func FilterNodesByName(inputMap map[string]*NodeConf, searchList []string) (retM
 }
 
 /*
-Filter a given map of NodeConf against given regular expression.
+Filter a given map of Node against given regular expression.
 */
-func FilterProfilesByName(inputMap map[string]*ProfileConf, searchList []string) (retMap map[string]*ProfileConf) {
-	retMap = map[string]*ProfileConf{}
+func FilterProfilesByName(inputMap map[string]*Profile, searchList []string) (retMap map[string]*Profile) {
+	retMap = map[string]*Profile{}
 	if len(searchList) > 0 {
 		for _, search := range searchList {
 			for name, nConf := range inputMap {
@@ -85,55 +85,55 @@ func FilterProfilesByName(inputMap map[string]*ProfileConf, searchList []string)
 }
 
 /*
-Creates an NodeConf with the given id. Doesn't add it to the database
+Creates an Node with the given id. Doesn't add it to the database
 */
-func NewNode(id string) (nodeconf NodeConf) {
-	nodeconf.Ipmi = new(IpmiConf)
-	nodeconf.Ipmi.Tags = map[string]string{}
-	nodeconf.Kernel = new(KernelConf)
-	nodeconf.NetDevs = make(map[string]*NetDevs)
-	nodeconf.Tags = map[string]string{}
-	nodeconf.id = id
-	fmt.Printf("New node with id: %s", nodeconf.id)
-	return nodeconf
+func NewNode(id string) (node Node) {
+	node.Ipmi = new(IPMI)
+	node.Ipmi.Tags = map[string]string{}
+	node.Kernel = new(Kernel)
+	node.NetDevs = make(map[string]*NetDev)
+	node.Tags = map[string]string{}
+	node.id = id
+	fmt.Printf("New node with id: %s", node.id)
+	return node
 }
 
-func EmptyNode() (nodeconf NodeConf) {
-	nodeconf.Ipmi = new(IpmiConf)
-	nodeconf.Ipmi.Tags = map[string]string{}
-	nodeconf.Kernel = new(KernelConf)
-	nodeconf.NetDevs = make(map[string]*NetDevs)
-	nodeconf.Tags = map[string]string{}
-	return nodeconf
+func EmptyNode() (node Node) {
+	node.Ipmi = new(IPMI)
+	node.Ipmi.Tags = map[string]string{}
+	node.Kernel = new(Kernel)
+	node.NetDevs = make(map[string]*NetDev)
+	node.Tags = map[string]string{}
+	return node
 }
 
 /*
-Creates an ProfileConf with the given id. Doesn't add it to the database.
+Creates a Profile with the given id. Doesn't add it to the database.
 */
-func NewProfile(id string) (profileconf ProfileConf) {
-	profileconf.Ipmi = new(IpmiConf)
+func NewProfile(id string) (profileconf Profile) {
+	profileconf.Ipmi = new(IPMI)
 	profileconf.Ipmi.Tags = map[string]string{}
-	profileconf.Kernel = new(KernelConf)
-	profileconf.NetDevs = make(map[string]*NetDevs)
+	profileconf.Kernel = new(Kernel)
+	profileconf.NetDevs = make(map[string]*NetDev)
 	profileconf.Tags = map[string]string{}
 	return profileconf
 }
 
 /*
-Flattens out a NodeConf, which means if there are no explicit values in *IpmiConf
-or *KernelConf, these pointer will set to nil. This will remove something like
+Flattens out a Node, which means if there are no explicit values in *IPMI
+or *Kernel, these pointer will set to nil. This will remove something like
 ipmi: {} from nodes.conf
 */
-func (info *NodeConf) Flatten() {
+func (info *Node) Flatten() {
 	recursiveFlatten(info)
 }
 
 /*
-Flattens out a ProfileConf, which means if there are no explicit values in *IpmiConf
-or *KernelConf, these pointer will set to nil. This will remove something like
+Flattens out a Profile, which means if there are no explicit values in *IPMI
+or *Kernel, these pointer will set to nil. This will remove something like
 ipmi: {} from nodes.conf
 */
-func (info *ProfileConf) Flatten() {
+func (info *Profile) Flatten() {
 	recursiveFlatten(info)
 }
 
@@ -305,28 +305,28 @@ Getters for unexported fields
 /*
 Returns the id of the node
 */
-func (node *NodeConf) Id() string {
+func (node *Node) Id() string {
 	return node.id
 }
 
 /*
 Returns the id of the profile
 */
-func (node *ProfileConf) Id() string {
+func (node *Profile) Id() string {
 	return node.id
 }
 
 /*
 Returns if the node is a valid in the database
 */
-func (node *NodeConf) Valid() bool {
+func (node *Node) Valid() bool {
 	return node.valid
 }
 
 /*
 Check if the netdev is the primary one
 */
-func (dev *NetDevs) Primary() bool {
+func (dev *NetDev) Primary() bool {
 	return dev.primary
 }
 

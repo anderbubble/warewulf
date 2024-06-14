@@ -22,7 +22,7 @@ type variables struct {
 	partName     string
 	diskName     string
 	fsName       string
-	profileConf  node.NodeConf
+	profileConf  node.Node
 }
 
 func GetCommand() *cobra.Command {

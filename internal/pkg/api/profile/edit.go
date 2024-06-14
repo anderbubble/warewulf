@@ -14,7 +14,7 @@ import (
 /*
 Returns the nodes as a yaml string
 */
-func FindAllProfileConfs() *wwapiv1.NodeYaml {
+func FindAllProfiles() *wwapiv1.NodesConf {
 	nodeDB, err := node.New()
 	if err != nil {
 		wwlog.Error("Could not open nodeDB: %s\n", err)
@@ -23,8 +23,8 @@ func FindAllProfileConfs() *wwapiv1.NodeYaml {
 	profileMap, _ := nodeDB.FindAllProfiles()
 	// ignore err as nodeDB should always be correct
 	buffer, _ := yaml.Marshal(profileMap)
-	retVal := wwapiv1.NodeYaml{
-		NodeConfMapYaml: string(buffer),
+	retVal := wwapiv1.NodesConf{
+		NodesConfYaml: string(buffer),
 	}
 	return &retVal
 }
@@ -32,7 +32,7 @@ func FindAllProfileConfs() *wwapiv1.NodeYaml {
 /*
 Returns filtered list of nodes
 */
-func FilteredProfiles(profileList *wwapiv1.NodeList) *wwapiv1.NodeYaml {
+func FilteredProfiles(profileList *wwapiv1.NodeList) *wwapiv1.NodesConf {
 	nodeDB, err := node.New()
 	if err != nil {
 		wwlog.Error("Could not open nodeDB: %s\n", err)
@@ -41,8 +41,8 @@ func FilteredProfiles(profileList *wwapiv1.NodeList) *wwapiv1.NodeYaml {
 	profileMap, _ := nodeDB.FindAllProfiles()
 	//profileMap = node.FilterProfilesByName(profileMap, profileList.Output)
 	buffer, _ := yaml.Marshal(profileMap)
-	retVal := wwapiv1.NodeYaml{
-		NodeConfMapYaml: string(buffer),
+	retVal := wwapiv1.NodesConf{
+		NodesConfYaml: string(buffer),
 	}
 	return &retVal
 }
@@ -59,8 +59,8 @@ func ProfileAddFromYaml(nodeList *wwapiv1.NodeAddParameter) (err error) {
 		return fmt.Errorf("got wrong hash, not modifying profile database")
 	}
 
-	profileMap := make(map[string]*node.ProfileConf)
-	err = yaml.Unmarshal([]byte(nodeList.NodeConfYaml), profileMap)
+	profileMap := make(map[string]*node.Profile)
+	err = yaml.Unmarshal([]byte(nodeList.NodeYaml), profileMap)
 	if err != nil {
 		return errors.Wrap(err, "Could not unmarshall Yaml: %s\n")
 	}

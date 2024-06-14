@@ -12,11 +12,11 @@ import (
 )
 
 /*
-Checks if for NodeConf all values can be parsed according to their type.
+Checks if for Node all values can be parsed according to their type.
 */
-func (nodeConf *NodeConf) Check() (err error) {
-	nodeInfoType := reflect.TypeOf(nodeConf)
-	nodeInfoVal := reflect.ValueOf(nodeConf)
+func (node *Node) Check() (err error) {
+	nodeInfoType := reflect.TypeOf(node)
+	nodeInfoVal := reflect.ValueOf(node)
 	// now iterate of every field
 	for i := 0; i < nodeInfoVal.Elem().NumField(); i++ {
 		//wwlog.Debug("checking field: %s type: %s", nodeInfoType.Elem().Field(i).Name, nodeInfoVal.Elem().Field(i).Type())
@@ -41,8 +41,8 @@ func (nodeConf *NodeConf) Check() (err error) {
 					}
 				}
 			}
-		} else if nodeInfoType.Elem().Field(i).Type == reflect.TypeOf(map[string]*NetDevs(nil)) {
-			netMap := nodeInfoVal.Elem().Field(i).Interface().(map[string]*NetDevs)
+		} else if nodeInfoType.Elem().Field(i).Type == reflect.TypeOf(map[string]*NetDev(nil)) {
+			netMap := nodeInfoVal.Elem().Field(i).Interface().(map[string]*NetDev)
 			for _, val := range netMap {
 				netType := reflect.TypeOf(val)
 				netVal := reflect.ValueOf(val)

@@ -78,7 +78,7 @@ nodes:
       default:
         ipaddr: 10.0.10.3
 `
-	var nodeConf1, nodeConf2, nodeConf3 NodeYaml
+	var nodeConf1, nodeConf2, nodeConf3 NodesConf
 	err := yaml.Unmarshal([]byte(nodeConfYml1), &nodeConf1)
 	assert.NoError(t, err)
 	err = yaml.Unmarshal([]byte(nodeConfYml2), &nodeConf2)
@@ -86,8 +86,8 @@ nodes:
 	err = yaml.Unmarshal([]byte(nodeConfYml3), &nodeConf3)
 	assert.NoError(t, err)
 
-	t.Run("Same NodeYaml with same conf", func(t *testing.T) {
-		var testConf NodeYaml
+	t.Run("Same NodesConf with same conf", func(t *testing.T) {
+		var testConf NodesConf
 		err = yaml.Unmarshal([]byte(nodeConfYml1), &testConf)
 		assert.NoError(t, err)
 		if testConf.Hash() != nodeConf1.Hash() {
@@ -97,7 +97,7 @@ nodes:
 		}
 	})
 
-	t.Run("Different sorted NodeYaml with same conf", func(t *testing.T) {
+	t.Run("Different sorted NodesConf with same conf", func(t *testing.T) {
 		yml1, err := yaml.Marshal(nodeConf1)
 		assert.NoError(t, err)
 		yml2, err := yaml.Marshal(nodeConf2)
@@ -107,7 +107,7 @@ nodes:
 		}
 	})
 
-	t.Run("Different NodeYaml with different conf", func(t *testing.T) {
+	t.Run("Different NodesConf with different conf", func(t *testing.T) {
 		if nodeConf2.Hash() == nodeConf3.Hash() {
 			t.Errorf("Hashes for different configuration is the same: %x == %x", nodeConf2.Hash(), nodeConf3.Hash())
 		}

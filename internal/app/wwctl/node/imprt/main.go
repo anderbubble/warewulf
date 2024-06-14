@@ -24,7 +24,7 @@ func CobraRunE(cmd *cobra.Command, args []string) error {
 	}
 	defer file.Close()
 
-	importMap := make(map[string]*node.NodeConf)
+	importMap := make(map[string]*node.Node)
 	buffer, err := io.ReadAll(file)
 	if err != nil {
 		wwlog.Error("Could not read:%s\n", err)
@@ -35,7 +35,7 @@ func CobraRunE(cmd *cobra.Command, args []string) error {
 		if err == nil {
 			yes := apiutil.ConfirmationPrompt(fmt.Sprintf("Are you sure you want to modify %d nodes", len(importMap)))
 			if yes {
-				err = apinode.NodeAddFromYaml(&wwapiv1.NodeYaml{NodeConfMapYaml: string(buffer)})
+				err = apinode.NodeAddFromYaml(&wwapiv1.NodesConf{NodesConfYaml: string(buffer)})
 				if err != nil {
 					wwlog.Error("Got following problem when writing back yaml: %s", err)
 					os.Exit(1)
@@ -71,7 +71,7 @@ func CobraRunE(cmd *cobra.Command, args []string) error {
 					continue
 				}
 				if importMap[line[0]] == nil {
-					importMap[line[0]] = new(node.NodeConf)
+					importMap[line[0]] = new(node.Node)
 				}
 				// ok := importMap[line[0]].SetLopt(records[0][j], line[j])
 				// if !(ok) {
@@ -86,7 +86,7 @@ func CobraRunE(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				wwlog.Error("Got following problem when creating yaml: %s", err)
 			}
-			err = apinode.NodeAddFromYaml(&wwapiv1.NodeYaml{NodeConfMapYaml: string(buffer)})
+			err = apinode.NodeAddFromYaml(&wwapiv1.NodesConf{NodesConfYaml: string(buffer)})
 			if err != nil {
 				wwlog.Error("Got following problem when writing back yaml: %s", err)
 				os.Exit(1)

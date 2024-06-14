@@ -9,9 +9,9 @@ import (
 )
 
 /*
-Calculate the hash of NodeYaml in an orderder fashion
+Calculate the hash of NodesConf in an orderder fashion
 */
-func (config *NodeYaml) Hash() [32]byte {
+func (config *NodesConf) Hash() [32]byte {
 	// flatten out profiles and nodes
 	for _, val := range config.nodeProfiles {
 		val.Flatten()
@@ -21,7 +21,7 @@ func (config *NodeYaml) Hash() [32]byte {
 	}
 	data, err := yaml.Marshal(config)
 	if err != nil {
-		wwlog.Warn("couldn't marshall NodeYaml for hashing")
+		wwlog.Warn("couldn't marshall NodesConf for hashing")
 	}
 	return sha256.Sum256(data)
 }
@@ -29,7 +29,7 @@ func (config *NodeYaml) Hash() [32]byte {
 /*
 Return the hash as string
 */
-func (config *NodeYaml) StringHash() string {
+func (config *NodesConf) StringHash() string {
 	buffer := config.Hash()
 	return hex.EncodeToString(buffer[:])
 }

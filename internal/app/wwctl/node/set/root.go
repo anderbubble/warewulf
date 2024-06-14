@@ -14,14 +14,14 @@ type variables struct {
 	setNodeAll bool
 	setYes     bool
 	setForce   bool
-	nodeConf   node.NodeConf
-	nodeDel    node.NodeConfDel
-	nodeAdd    node.NodeConfAdd
+	node       node.Node
+	nodeDel    node.NodeDel
+	nodeAdd    node.NodeAdd
 }
 
 func GetCommand() *cobra.Command {
 	vars := variables{}
-	vars.nodeConf = node.NewNode("")
+	vars.node = node.NewNode("")
 	baseCmd := &cobra.Command{
 		DisableFlagsInUseLine: true,
 		Use:                   "set [OPTIONS] PATTERN [PATTERN ...]",
@@ -41,7 +41,7 @@ func GetCommand() *cobra.Command {
 		},
 	}
 
-	vars.nodeConf.CreateFlags(baseCmd)
+	vars.node.CreateFlags(baseCmd)
 	vars.nodeAdd.CreateAddFlags(baseCmd)
 	vars.nodeDel.CreateDelFlags(baseCmd)
 	baseCmd.PersistentFlags().BoolVarP(&vars.setNodeAll, "all", "a", false, "Set all nodes")

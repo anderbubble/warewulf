@@ -1306,10 +1306,10 @@ type NodeAddParameter struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	NodeConfYaml string   `protobuf:"bytes,1,opt,name=nodeConfYaml,proto3" json:"nodeConfYaml,omitempty"`
-	Force        bool     `protobuf:"varint,2,opt,name=force,proto3" json:"force,omitempty"`
-	Hash         string   `protobuf:"bytes,3,opt,name=hash,proto3" json:"hash,omitempty"`
-	NodeNames    []string `protobuf:"bytes,10,rep,name=nodeNames,proto3" json:"nodeNames,omitempty"`
+	NodeYaml  string   `protobuf:"bytes,1,opt,name=nodeYaml,proto3" json:"nodeYaml,omitempty"`
+	Force     bool     `protobuf:"varint,2,opt,name=force,proto3" json:"force,omitempty"`
+	Hash      string   `protobuf:"bytes,3,opt,name=hash,proto3" json:"hash,omitempty"`
+	NodeNames []string `protobuf:"bytes,10,rep,name=nodeNames,proto3" json:"nodeNames,omitempty"`
 }
 
 func (x *NodeAddParameter) Reset() {
@@ -1344,9 +1344,9 @@ func (*NodeAddParameter) Descriptor() ([]byte, []int) {
 	return file_routes_proto_rawDescGZIP(), []int{20}
 }
 
-func (x *NodeAddParameter) GetNodeConfYaml() string {
+func (x *NodeAddParameter) GetNodeYaml() string {
 	if x != nil {
-		return x.NodeConfYaml
+		return x.NodeYaml
 	}
 	return ""
 }
@@ -1372,19 +1372,19 @@ func (x *NodeAddParameter) GetNodeNames() []string {
 	return nil
 }
 
-// NodeYaml is just the updated YAML config which will be added
+// NodesConf is just the updated YAML config which will be added
 // to nodes.conf (is resused for profile edit)
-type NodeYaml struct {
+type NodesConf struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	NodeConfMapYaml string `protobuf:"bytes,1,opt,name=nodeConfMapYaml,proto3" json:"nodeConfMapYaml,omitempty"`
+	NodesConfYaml string `protobuf:"bytes,1,opt,name=nodesConfYaml,proto3" json:"nodesConfYaml,omitempty"`
 	Hash            string `protobuf:"bytes,2,opt,name=hash,proto3" json:"hash,omitempty"`
 }
 
-func (x *NodeYaml) Reset() {
-	*x = NodeYaml{}
+func (x *NodesConf) Reset() {
+	*x = NodesConf{}
 	if protoimpl.UnsafeEnabled {
 		mi := &file_routes_proto_msgTypes[21]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1392,13 +1392,13 @@ func (x *NodeYaml) Reset() {
 	}
 }
 
-func (x *NodeYaml) String() string {
+func (x *NodesConf) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*NodeYaml) ProtoMessage() {}
+func (*NodesConf) ProtoMessage() {}
 
-func (x *NodeYaml) ProtoReflect() protoreflect.Message {
+func (x *NodesConf) ProtoReflect() protoreflect.Message {
 	mi := &file_routes_proto_msgTypes[21]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -1410,19 +1410,19 @@ func (x *NodeYaml) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use NodeYaml.ProtoReflect.Descriptor instead.
-func (*NodeYaml) Descriptor() ([]byte, []int) {
+// Deprecated: Use NodesConf.ProtoReflect.Descriptor instead.
+func (*NodesConf) Descriptor() ([]byte, []int) {
 	return file_routes_proto_rawDescGZIP(), []int{21}
 }
 
-func (x *NodeYaml) GetNodeConfMapYaml() string {
+func (x *NodesConf) GetNodesConfYaml() string {
 	if x != nil {
-		return x.NodeConfMapYaml
+		return x.NodesConfYaml
 	}
 	return ""
 }
 
-func (x *NodeYaml) GetHash() string {
+func (x *NodesConf) GetHash() string {
 	if x != nil {
 		return x.Hash
 	}
@@ -1503,7 +1503,7 @@ type ConfSetParameter struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	NodeConfYaml     string            `protobuf:"bytes,1,opt,name=nodeConfYaml,proto3" json:"nodeConfYaml,omitempty"`
+	NodeYaml         string            `protobuf:"bytes,1,opt,name=nodeConfYaml,proto3" json:"nodeConfYaml,omitempty"`
 	NetdevDelete     string            `protobuf:"bytes,2,opt,name=netdevDelete,proto3" json:"netdevDelete,omitempty"`
 	DiskDelete       string            `protobuf:"bytes,3,opt,name=diskDelete,proto3" json:"diskDelete,omitempty"`
 	PartitionDelete  string            `protobuf:"bytes,4,opt,name=partitionDelete,proto3" json:"partitionDelete,omitempty"`
@@ -1552,9 +1552,9 @@ func (*ConfSetParameter) Descriptor() ([]byte, []int) {
 	return file_routes_proto_rawDescGZIP(), []int{23}
 }
 
-func (x *ConfSetParameter) GetNodeConfYaml() string {
+func (x *ConfSetParameter) GetNodeYaml() string {
 	if x != nil {
-		return x.NodeConfYaml
+		return x.NodeYaml
 	}
 	return ""
 }
@@ -2285,7 +2285,7 @@ var file_routes_proto_goTypes = []interface{}{
 	(*GetProfileList)(nil),             // 19: wwapi.v1.GetProfileList
 	(*ProfileList)(nil),                // 20: wwapi.v1.ProfileList
 	(*NodeAddParameter)(nil),           // 21: wwapi.v1.NodeAddParameter
-	(*NodeYaml)(nil),                   // 22: wwapi.v1.NodeYaml
+	(*NodesConf)(nil),                  // 22: wwapi.v1.NodesConf
 	(*NodeDeleteParameter)(nil),        // 23: wwapi.v1.NodeDeleteParameter
 	(*ConfSetParameter)(nil),           // 24: wwapi.v1.ConfSetParameter
 	(*NodeStatus)(nil),                 // 25: wwapi.v1.NodeStatus
@@ -2615,7 +2615,7 @@ func file_routes_proto_init() {
 			}
 		}
 		file_routes_proto_msgTypes[21].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*NodeYaml); i {
+			switch v := v.(*NodesConf); i {
 			case 0:
 				return &v.state
 			case 1:

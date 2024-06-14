@@ -41,7 +41,7 @@ func ProfileDelete(ndp *wwapiv1.NodeDeleteParameter) (err error) {
 // ProfileDeleteParameterCheck does error checking on ProfileDeleteParameter.
 // Output to the console if console is true.
 // Returns the profiles to delete.
-func ProfileDeleteParameterCheck(ndp *wwapiv1.NodeDeleteParameter, console bool) (nodeDB node.NodeYaml, profileList []string, err error) {
+func ProfileDeleteParameterCheck(ndp *wwapiv1.NodeDeleteParameter, console bool) (nodeDB node.NodesConf, profileList []string, err error) {
 
 	if ndp == nil {
 		err = fmt.Errorf("profileDeleteParameter is nil")
