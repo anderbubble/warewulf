@@ -76,8 +76,6 @@ func importContainer() usecase.Interactor {
 		OciUserName string `json:"ociuser" description:"Username for the registry URI, if needed"`
 		OciPassword string `json:"ocipassword" description:"Password for the registry URI, if needed"`
 		Build       bool   `json:"build" default:"true" description:"Whether to build the container image, default:'true'"`
-		SycUser     bool   `json:"syncuser" default:"true" description:"Whether to syncuser, default:'true'"`
-		Default     bool   `json:"default" default:"false" description:"Whether to make the contaienr default, default:'false'"`
 		Force       bool   `json:"force" default:"false" description:"Whether to overwrite the existing container with the same name, default:'false'"`
 	}
 
@@ -91,11 +89,9 @@ func importContainer() usecase.Interactor {
 			Name:        input.Name,
 			Force:       input.Force,
 			Build:       input.Build,
-			Default:     input.Default,
 			OciNoHttps:  input.NoHttps,
 			OciUsername: input.OciUserName,
 			OciPassword: input.OciPassword,
-			SyncUser:    input.SycUser,
 		}
 
 		containerName, err := container_api.ContainerImport(cip)
@@ -171,14 +167,12 @@ func buildContainer() usecase.Interactor {
 	type buildContainerInput struct {
 		Name    string `path:"name"`
 		Force   bool   `query:"force" default:"false" description:"Whether to build a container forcely, default:'false'"`
-		Default bool   `query:"default" default:"false" description:"Whether to make the container default, default:'false'"`
 	}
 
 	u := usecase.NewInteractor(func(ctx context.Context, input buildContainerInput, output *Container) error {
 		cbp := &wwapiv1.ContainerBuildParameter{
 			ContainerNames: []string{input.Name},
 			Force:          input.Force,
-			Default:        input.Default,
 		}
 
 		err := container_api.ContainerBuild(cbp)
