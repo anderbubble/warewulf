@@ -43,8 +43,8 @@ func getContainers() usecase.Interactor {
 			return nil
 		}
 	})
-	u.SetTitle("Get container images")
-	u.SetDescription("Get all container images.")
+	u.SetTitle("Get all containers")
+	u.SetDescription("Get all defined containers")
 	u.SetTags("Container")
 	return u
 }
@@ -63,18 +63,18 @@ func getContainerByName() usecase.Interactor {
 		}
 	})
 	u.SetTitle("Get a container")
-	u.SetDescription("Get a container by its name.")
+	u.SetDescription("Get a container by its name")
 	u.SetTags("Container")
 	return u
 }
 
 func importContainer() usecase.Interactor {
 	type importContainerInput struct {
-		Name        string `path:"name"`
-		URI         string `json:"uri" required:"true" description:"Docker registry URI to download container images"`
-		NoHttps     bool   `json:"nohttps" default:"false" description:"Whether to use https for the registry URI, default:'false'"`
-		OciUserName string `json:"ociuser" description:"Username for the registry URI, if needed"`
-		OciPassword string `json:"ocipassword" description:"Password for the registry URI, if needed"`
+		Name     string `path:"name"`
+		URI      string `json:"uri" required:"true" description:"OCI registry URI to import container definition from"`
+		NoHttps  bool   `json:"nohttps" default:"false" description:"Use http, rather than https, to communicate with the registry, default:'false'"`
+		User     string `json:"user" description:"Username for the registry, if needed"`
+		Password string `json:"password" description:"Password for the registry, if needed"`
 	}
 
 	u := usecase.NewInteractor(func(ctx context.Context, input importContainerInput, output *Container) error {
@@ -86,7 +86,7 @@ func importContainer() usecase.Interactor {
 			return fmt.Errorf("VNFS name contains illegal characters: %s", input.Name)
 		}
 
-		sctx, err := container_api.GetSystemContext(input.NoHttps, input.OciUserName, input.OciPassword, "")
+		sctx, err := container_api.GetSystemContext(input.NoHttps, input.User, input.Password, "")
 		if err != nil {
 			return err
 		}
@@ -100,7 +100,7 @@ func importContainer() usecase.Interactor {
 		return nil
 	})
 	u.SetTitle("Import a container")
-	u.SetDescription("Import a container from Docker registry URI")
+	u.SetDescription("Import a container from an OCI registry")
 	u.SetTags("Container")
 
 	return u
@@ -135,7 +135,7 @@ func renameContainer() usecase.Interactor {
 	type renameContainerInput struct {
 		Name   string `path:"name"`
 		Target string `path:"target"`
-		Build  bool   `query:"build" default:"true" description:"Whether to build the container image after renaming, default:'true'"`
+		Build  bool   `query:"build" default:"true" description:"Build the container image after renaming, default:'true'"`
 	}
 
 	u := usecase.NewInteractor(func(ctx context.Context, input renameContainerInput, output *Container) error {
@@ -163,7 +163,7 @@ func renameContainer() usecase.Interactor {
 func buildContainer() usecase.Interactor {
 	type buildContainerInput struct {
 		Name  string `path:"name"`
-		Force bool   `query:"force" default:"false" description:"Whether to build a container forcely, default:'false'"`
+		Force bool   `query:"force" default:"false" description:"Build the container image even if it appears unnecessary, default:'false'"`
 	}
 
 	u := usecase.NewInteractor(func(ctx context.Context, input buildContainerInput, output *Container) error {
@@ -181,7 +181,7 @@ func buildContainer() usecase.Interactor {
 		return nil
 	})
 	u.SetTitle("Build a container")
-	u.SetDescription("Build a container and generate its image")
+	u.SetDescription("Build a container image")
 	u.SetTags("Container")
 
 	return u
