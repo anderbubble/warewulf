@@ -14,7 +14,6 @@ import (
 	"github.com/warewulf/warewulf/internal/pkg/kernel"
 	"github.com/warewulf/warewulf/internal/pkg/node"
 	"github.com/warewulf/warewulf/internal/pkg/util"
-	"github.com/warewulf/warewulf/internal/pkg/warewulfd"
 	"github.com/warewulf/warewulf/internal/pkg/wwlog"
 )
 
@@ -347,14 +346,7 @@ func ContainerRename(crp *wwapiv1.ContainerRenameParameter) (err error) {
 		return err
 	}
 
-	err = warewulfd.DaemonStatus()
-	if err != nil {
-		// warewulfd is not running, skip
-		return nil
-	}
-
-	// else reload daemon to apply new changes
-	return warewulfd.DaemonReload()
+	return nil
 }
 
 // create the system context and reading out environment variables
