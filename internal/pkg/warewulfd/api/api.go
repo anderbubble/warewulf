@@ -28,6 +28,10 @@ func Handler() *web.Service {
 	// container related rest apis
 	api.Get("/api/containers", getContainers())
 	api.Get("/api/containers/{name}", getContainerByName())
+	api.Post("/api/containers/{name}", importContainer())
+	api.Delete("/api/containers/{name}", deleteContainer())
+	api.Post("/api/containers/{name}/rename/{target}", renameContainer())
+	api.Post("/api/containers/{name}/build", buildContainer())
 
 	api.Get("/api/overlays", getOverlays())
 	api.Get("/api/overlays/{name}", getOverlayByName())
