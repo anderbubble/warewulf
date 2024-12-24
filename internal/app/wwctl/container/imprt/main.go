@@ -7,7 +7,6 @@ import (
 )
 
 func CobraRunE(cmd *cobra.Command, args []string) (err error) {
-
 	// Shim in a name if none given.
 	name := ""
 	if len(args) == 2 {
@@ -28,5 +27,5 @@ func CobraRunE(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	_, err = apicontainer.ContainerImport(cip)
-	return
+	return err
 }
