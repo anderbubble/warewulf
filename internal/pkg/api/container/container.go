@@ -14,7 +14,6 @@ import (
 	"github.com/warewulf/warewulf/internal/pkg/kernel"
 	"github.com/warewulf/warewulf/internal/pkg/node"
 	"github.com/warewulf/warewulf/internal/pkg/util"
-	"github.com/warewulf/warewulf/internal/pkg/warewulfd"
 	"github.com/warewulf/warewulf/internal/pkg/wwlog"
 )
 
@@ -230,13 +229,6 @@ func ContainerImport(cip *wwapiv1.ContainerImportParameter) (containerName strin
 			err = fmt.Errorf("failed to persist nodedb: %w", err)
 			return
 		}
-
-		wwlog.Info("Set default profile to container: %s", cip.Name)
-		err = warewulfd.DaemonReload()
-		if err != nil {
-			err = fmt.Errorf("failed to reload warewulf daemon: %w", err)
-			return
-		}
 	}
 	return
 }
@@ -409,14 +401,7 @@ func ContainerRename(crp *wwapiv1.ContainerRenameParameter) (err error) {
 		return err
 	}
 
-	err = warewulfd.DaemonStatus()
-	if err != nil {
-		// warewulfd is not running, skip
-		return nil
-	}
-
-	// else reload daemon to apply new changes
-	return warewulfd.DaemonReload()
+	return nil
 }
 
 // create the system context and reading out environment variables
