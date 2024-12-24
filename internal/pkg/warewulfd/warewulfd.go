@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	warewulfconf "github.com/warewulf/warewulf/internal/pkg/config"
+	"github.com/warewulf/warewulf/internal/pkg/warewulfd/api"
 	"github.com/warewulf/warewulf/internal/pkg/wwlog"
 )
 
@@ -82,7 +83,7 @@ func RunServer() error {
 	conf := warewulfconf.Get()
 	daemonPort := conf.Warewulf.Port
 
-	apiHandler := apiHandler()
+	apiHandler := api.Handler()
 	defaultHandler := defaultHandler()
 	dispatchHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/api") {
@@ -92,7 +93,6 @@ func RunServer() error {
 		}
 	})
 	err = http.ListenAndServe(":"+strconv.Itoa(daemonPort), dispatchHandler)
-
 	if err != nil {
 		return fmt.Errorf("could not start listening service: %w", err)
 	}
