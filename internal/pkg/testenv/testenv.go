@@ -18,12 +18,14 @@ import (
 	"github.com/warewulf/warewulf/internal/pkg/config"
 )
 
-const initWarewulfConf = ``
-const initNodesConf = `nodeprofiles:
+const (
+	initWarewulfConf = ``
+	initNodesConf    = `nodeprofiles:
   default: {}
 nodes:
   node1: {}
 `
+)
 
 type TestEnv struct {
 	t       *testing.T
@@ -31,18 +33,20 @@ type TestEnv struct {
 	BaseDir string
 }
 
-const Sysconfdir = "etc"
-const Bindir = "bin"
-const Datadir = "usr/share"
-const Localstatedir = "var/local"
-const Srvdir = "srv"
-const Tftpdir = "srv/tftp"
-const Firewallddir = "usr/lib/firewalld/services"
-const Systemddir = "usr/lib/systemd/system"
-const WWOverlaydir = "var/lib/warewulf/overlays"
-const WWChrootdir = "var/lib/warewulf/chroots"
-const WWProvisiondir = "srv/warewulf"
-const Cachedir = "var/cache"
+const (
+	Sysconfdir     = "etc"
+	Bindir         = "bin"
+	Datadir        = "usr/share"
+	Localstatedir  = "var/local"
+	Srvdir         = "srv"
+	Tftpdir        = "srv/tftp"
+	Firewallddir   = "usr/lib/firewalld/services"
+	Systemddir     = "usr/lib/systemd/system"
+	WWOverlaydir   = "var/lib/warewulf/overlays"
+	WWChrootdir    = "var/lib/warewulf/chroots"
+	WWProvisiondir = "srv/warewulf"
+	Cachedir       = "var/cache"
+)
 
 // New creates a test environment in a temporary directory and configures
 // Warewulf to use it.
@@ -149,7 +153,7 @@ func (env *TestEnv) GetPath(fileName string) string {
 //
 // Asserts no errors occur.
 func (env *TestEnv) MkdirAll(dirName string) {
-	err := os.MkdirAll(env.GetPath(dirName), 0755)
+	err := os.MkdirAll(env.GetPath(dirName), 0o755)
 	env.assertNoError(err)
 }
 
