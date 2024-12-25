@@ -3,6 +3,7 @@ package container
 import (
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -120,6 +121,14 @@ func ImageSize(name string) int {
 		return int(img.Size())
 	} else {
 		return 0
+	}
+}
+
+func ImageModTime(name string) time.Time {
+	if img, err := os.Stat(ImageFile(name)); err == nil {
+		return img.ModTime()
+	} else {
+		return time.Time{}
 	}
 }
 
