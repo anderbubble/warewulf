@@ -8,6 +8,7 @@ import (
 	"path"
 
 	"github.com/swaggest/usecase"
+	"github.com/swaggest/usecase/status"
 	"github.com/warewulf/warewulf/internal/pkg/overlay"
 	"github.com/warewulf/warewulf/internal/pkg/util"
 )
@@ -97,10 +98,14 @@ func NewOverlayFile(name string, path string) (*OverlayFile, error) {
 func getOverlayFile() usecase.Interactor {
 	type getOverlayByNameInput struct {
 		Name string `path:"name"`
-		Path string `path:"path"`
+		Path string `query:"path"`
+		Node string `query:"node"`
 	}
 
 	u := usecase.NewInteractor(func(ctx context.Context, input getOverlayByNameInput, output *OverlayFile) error {
+		if input.Path == "" {
+			return status.Wrap(fmt.Errorf("must specify a path"), status.InvalidArgument)
+		}
 		if relPath, err := url.QueryUnescape(input.Path); err != nil {
 			return fmt.Errorf("failed to decode path: %v (%v)", input.Path, err)
 		} else {
