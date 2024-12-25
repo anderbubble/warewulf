@@ -14,9 +14,10 @@ import (
 )
 
 type Container struct {
-	Kernels  []string `json:"kernels"`
-	Size     int      `json:"size"`
-	Writable bool     `json:"writable"`
+	Kernels   []string `json:"kernels"`
+	Size      int      `json:"size"`
+	BuildTime int64    `json:"buildtime"`
+	Writable  bool     `json:"writable"`
 }
 
 func NewContainer(name string) *Container {
@@ -26,6 +27,12 @@ func NewContainer(name string) *Container {
 		c.Kernels = append(c.Kernels, k.Path)
 	}
 	c.Size = container.ImageSize(name)
+	modTime := container.ImageModTime(name)
+	if modTime.IsZero() {
+		c.BuildTime = 0
+	} else {
+		c.BuildTime = modTime.Unix()
+	}
 	c.Writable = container.IsWriteAble(name)
 	return c
 }
