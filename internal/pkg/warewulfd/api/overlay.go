@@ -192,3 +192,29 @@ func createOverlay() usecase.Interactor {
 	u.SetTags("Overlay")
 	return u
 }
+
+func deleteOverlay() usecase.Interactor {
+	type deleteOverlayInput struct {
+		Name  string `path:"name"`
+		Force bool   `query:"force"`
+	}
+
+	u := usecase.NewInteractor(func(ctx context.Context, input deleteOverlayInput, output *Overlay) error {
+		*output = *NewOverlay(input.Name)
+		overlay_ := overlay.GetSiteOverlay(input.Name)
+		if input.Force {
+			if err := os.RemoveAll(overlay_.Path()); err != nil {
+				return err
+			}
+		} else {
+			if err := os.Remove(overlay_.Path()); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	u.SetTitle("Delete an overlay")
+	u.SetDescription("Delete an overlay.")
+	u.SetTags("Overlay")
+	return u
+}
