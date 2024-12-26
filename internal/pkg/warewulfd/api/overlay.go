@@ -9,6 +9,7 @@ import (
 
 	"github.com/swaggest/usecase"
 	"github.com/swaggest/usecase/status"
+	"github.com/warewulf/warewulf/internal/pkg/node"
 	"github.com/warewulf/warewulf/internal/pkg/overlay"
 	"github.com/warewulf/warewulf/internal/pkg/util"
 )
@@ -68,6 +69,7 @@ type OverlayFile struct {
 	Overlay  string `json:"overlay"`
 	Path     string `json:"path"`
 	Contents string `json:"contents"`
+	rendered bool
 }
 
 func (this *OverlayFile) FullPath() string {
@@ -83,42 +85,91 @@ func (this *OverlayFile) readContents() (string, error) {
 	return string(f), err
 }
 
-func NewOverlayFile(name string, path string) (*OverlayFile, error) {
-	f := new(OverlayFile)
-	f.Overlay = name
-	f.Path = path
-	if contents, err := f.readContents(); err != nil {
-		return f, err
-	} else {
-		f.Contents = contents
-		return f, nil
+func (this *OverlayFile) renderContents(nodeName string) (string, error) {
+	if !(path.Ext(this.Path) == ".ww") {
+		return "", fmt.Errorf("'%s' does not end with '.ww'", this.Path)
 	}
+
+	if this.rendered {
+		return "", fmt.Errorf("already rendered")
+	}
+
+	registry, regErr := node.New()
+	if regErr != nil {
+		return "", regErr
+	}
+
+	renderNode, nodeErr := registry.GetNode(nodeName)
+	if nodeErr != nil {
+		return "", nodeErr
+	}
+
+	allNodes, allNodesErr := registry.FindAllNodes()
+	if allNodesErr != nil {
+		return "", allNodesErr
+	}
+
+	tstruct, structErr := overlay.InitStruct(this.Overlay, renderNode, allNodes)
+	if structErr != nil {
+		return "", structErr
+	}
+	tstruct.BuildSource = this.Path
+
+	buffer, _, _, renderErr := overlay.RenderTemplateFile(this.FullPath(), tstruct)
+	if renderErr != nil {
+		return "", renderErr
+	}
+
+	return buffer.String(), nil
+}
+
+func NewOverlayFile(name string, path string, renderNodeName string) (*OverlayFile, error) {
+	this := new(OverlayFile)
+	this.Overlay = name
+	this.Path = path
+	if renderNodeName == "" {
+		if contents, err := this.readContents(); err != nil {
+			return this, err
+		} else {
+			this.Contents = contents
+		}
+	} else {
+		if contents, err := this.renderContents(renderNodeName); err != nil {
+			return this, err
+		} else {
+			this.Contents = contents
+		}
+	}
+	return this, nil
 }
 
 func getOverlayFile() usecase.Interactor {
 	type getOverlayByNameInput struct {
 		Name string `path:"name"`
 		Path string `query:"path"`
-		Node string `query:"node"`
+		Node string `query:"render"`
 	}
 
 	u := usecase.NewInteractor(func(ctx context.Context, input getOverlayByNameInput, output *OverlayFile) error {
 		if input.Path == "" {
 			return status.Wrap(fmt.Errorf("must specify a path"), status.InvalidArgument)
 		}
-		if relPath, err := url.QueryUnescape(input.Path); err != nil {
-			return fmt.Errorf("failed to decode path: %v (%v)", input.Path, err)
-		} else {
-			if overlayFile, err := NewOverlayFile(input.Name, relPath); err != nil {
-				return fmt.Errorf("unable to read overlay file %v:%v", input.Name, relPath)
-			} else {
-				*output = *overlayFile
-				return nil
-			}
+
+		relPath, parseErr := url.QueryUnescape(input.Path)
+		if parseErr != nil {
+			return fmt.Errorf("failed to decode path: %v: %w", input.Path, parseErr)
 		}
+
+		overlayFile, err := NewOverlayFile(input.Name, relPath, input.Node)
+		if err != nil {
+			return fmt.Errorf("unable to read overlay file %v: %v: %w", input.Name, relPath, err)
+		}
+
+		*output = *overlayFile
+		return nil
 	})
 	u.SetTitle("Get an overlay file")
-	u.SetDescription("Get an overlay file by its name and path.")
+	u.SetDescription("Get an overlay file by its name and path, optionally rendered for a given node.")
 	u.SetTags("Overlay")
 	return u
 }
