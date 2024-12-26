@@ -173,3 +173,22 @@ func getOverlayFile() usecase.Interactor {
 	u.SetTags("Overlay")
 	return u
 }
+
+func createOverlay() usecase.Interactor {
+	type createOverlayInput struct {
+		Name string `path:"name"`
+	}
+
+	u := usecase.NewInteractor(func(ctx context.Context, input createOverlayInput, output *Overlay) error {
+		newOverlay := overlay.GetSiteOverlay(input.Name)
+		if err := newOverlay.Create(); err != nil {
+			return err
+		}
+		*output = *NewOverlay(newOverlay.Name())
+		return nil
+	})
+	u.SetTitle("Create an overlay")
+	u.SetDescription("Create an overlay.")
+	u.SetTags("Overlay")
+	return u
+}

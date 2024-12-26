@@ -36,6 +36,7 @@ func Handler() *web.Service {
 	api.Get("/api/overlays", getOverlays())
 	api.Get("/api/overlays/{name}", getOverlayByName())
 	api.Get("/api/overlays/{name}/file", getOverlayFile())
+	api.Put("/api/overlays/{name}", createOverlay())
 
 	api.Docs("/api/docs", swgui.New)
 
