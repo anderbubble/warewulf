@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"runtime"
 
 	"github.com/swaggest/usecase"
 	"github.com/swaggest/usecase/status"
@@ -170,6 +171,38 @@ func getOverlayFile() usecase.Interactor {
 	})
 	u.SetTitle("Get an overlay file")
 	u.SetDescription("Get an overlay file by its name and path, optionally rendered for a given node.")
+	u.SetTags("Overlay")
+	return u
+}
+
+type OverlayBuildStatus struct {
+	Message string `json:"status"`
+}
+
+func buildAllOverlays() usecase.Interactor {
+	u := usecase.NewInteractor(func(ctx context.Context, input struct{}, output *OverlayBuildStatus) error {
+		registry, regErr := node.New()
+		if regErr != nil {
+			return regErr
+		}
+
+		allNodes, nodesErr := registry.FindAllNodes()
+		if nodesErr != nil {
+			return nodesErr
+		}
+
+		workers := runtime.NumCPU()
+		err := overlay.BuildAllOverlays(allNodes, allNodes, workers)
+		if err != nil {
+			return err
+		}
+
+		*output = OverlayBuildStatus{}
+		output.Message = "overlays built successfully"
+		return nil
+	})
+	u.SetTitle("Build overlays")
+	u.SetDescription("Build system and runtime overlays for all nodes.")
 	u.SetTags("Overlay")
 	return u
 }
