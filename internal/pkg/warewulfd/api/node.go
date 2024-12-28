@@ -61,6 +61,30 @@ func getNodeByID() usecase.Interactor {
 	return u
 }
 
+func getNodeFields() usecase.Interactor {
+	type getNodeByIDInput struct {
+		ID string `path:"id"`
+	}
+
+	u := usecase.NewInteractor(func(ctx context.Context, input getNodeByIDInput, output *[]node.Field) error {
+		if registry, err := node.New(); err != nil {
+			return err
+		} else {
+			if n, fields, err := registry.MergeNode(input.ID); err != nil {
+				return status.Wrap(fmt.Errorf("node not found: %v (%v)", input.ID, err), status.NotFound)
+			} else {
+				*output = fields.List(n)
+				return nil
+			}
+		}
+	})
+	u.SetTitle("Get node fields")
+	u.SetDescription("Get the fields of a node, indicating which profiles each fields originates from.")
+	u.SetTags("Node")
+	u.SetExpectedErrors(status.NotFound)
+	return u
+}
+
 func addNode() usecase.Interactor {
 	type addNodeInput struct {
 		ID   string    `path:"id" required:"true" description:"Node name"`

@@ -29,6 +29,7 @@ func Handler(auth *config.Authentication) *web.Service {
 			r.Method(http.MethodPut, "/{id}", nethttp.NewHandler(addNode()))
 			r.Method(http.MethodDelete, "/{id}", nethttp.NewHandler(deleteNode()))
 			r.Method(http.MethodPatch, "/{id}", nethttp.NewHandler(updateNode()))
+			r.Method(http.MethodGet, "/{id}/fields", nethttp.NewHandler(getNodeFields()))
 			r.Method(http.MethodPost, "/overlays/build", nethttp.NewHandler(buildAllOverlays()))
 			r.Method(http.MethodPost, "/{id}/overlays/build", nethttp.NewHandler(buildOverlays()))
 		})
