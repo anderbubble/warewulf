@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	warewulfconf "github.com/warewulf/warewulf/internal/pkg/config"
+	"github.com/warewulf/warewulf/internal/pkg/util"
 	"github.com/warewulf/warewulf/internal/pkg/warewulfd/api"
 	"github.com/warewulf/warewulf/internal/pkg/wwlog"
 )
@@ -83,7 +84,15 @@ func RunServer() error {
 	conf := warewulfconf.Get()
 	daemonPort := conf.Warewulf.Port
 
-	apiHandler := api.Handler()
+	auth := warewulfconf.NewAuthentication()
+	if util.IsFile(conf.Paths.AuthenticationConf()) {
+		err = auth.Read(conf.Paths.AuthenticationConf())
+		if err != nil {
+			wwlog.Warn("%w\n", err)
+		}
+	}
+
+	apiHandler := api.Handler(auth)
 	defaultHandler := defaultHandler()
 	dispatchHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/api") {

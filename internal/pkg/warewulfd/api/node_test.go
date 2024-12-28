@@ -17,7 +17,7 @@ func TestNodeAPI(t *testing.T) {
 	env := testenv.New(t)
 	defer env.RemoveAll()
 
-	srv := httptest.NewServer(Handler())
+	srv := httptest.NewServer(Handler(nil))
 	defer srv.Close()
 
 	t.Run("add a node", func(t *testing.T) {

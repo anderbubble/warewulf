@@ -18,7 +18,6 @@ import (
 	"github.com/warewulf/warewulf/internal/app/wwctl/version"
 	warewulfconf "github.com/warewulf/warewulf/internal/pkg/config"
 	"github.com/warewulf/warewulf/internal/pkg/help"
-	"github.com/warewulf/warewulf/internal/pkg/util"
 	"github.com/warewulf/warewulf/internal/pkg/wwlog"
 )
 
@@ -92,13 +91,6 @@ func rootPersistentPreRunE(cmd *cobra.Command, args []string) (err error) {
 	if err != nil {
 		wwlog.Error("version: %s relase: %s", warewulfconf.Version, warewulfconf.Release)
 		return
-	}
-	authentication := warewulfconf.GetAuthentication()
-	if util.IsFile(conf.Paths.AuthenticationConf()) {
-		err = authentication.Read(conf.Paths.AuthenticationConf())
-		if err != nil {
-			wwlog.Warn("%w\n", err)
-		}
 	}
 	err = conf.SetDynamicDefaults()
 	return

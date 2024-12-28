@@ -23,13 +23,13 @@ func TestContainerAPI(t *testing.T) {
   - name: user
     pass: user
     role: user`
-	authentication := config.GetAuthentication()
-	err := authentication.ParseFromRaw([]byte(authData))
+	auth := config.NewAuthentication()
+	err := auth.ParseFromRaw([]byte(authData))
 	assert.NoError(t, err)
 
 	t.Run("test all containers related apis", func(t *testing.T) {
 		// prepareration
-		srv := httptest.NewServer(Handler())
+		srv := httptest.NewServer(Handler(auth))
 		defer srv.Close()
 		env.WriteFile(path.Join(testenv.WWChrootdir, "test-container/rootfs/file"), `test`)
 

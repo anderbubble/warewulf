@@ -9,10 +9,11 @@ import (
 	"github.com/swaggest/rest/web"
 	swgui "github.com/swaggest/swgui/v5emb"
 
+	"github.com/warewulf/warewulf/internal/pkg/config"
 	"github.com/warewulf/warewulf/internal/pkg/version"
 )
 
-func Handler() *web.Service {
+func Handler(auth *config.Authentication) *web.Service {
 	api := web.NewService(openapi3.NewReflector())
 
 	api.OpenAPISchema().SetTitle("Warewulf v4 API")
@@ -43,12 +44,12 @@ func Handler() *web.Service {
 	api.Route("/api/containers", func(r chi.Router) {
 		// require "admin" role group
 		r.Group(func(r chi.Router) {
-			r.Use(AuthMiddleware, ACLMiddleware("admin"))
+			r.Use(AuthMiddleware(auth), ACLMiddleware(auth, "admin"))
 			r.Method(http.MethodDelete, "/{name}", nethttp.NewHandler(deleteContainer()))
 		})
 		// requrie "user" role group
 		r.Group(func(r chi.Router) {
-			r.Use(AuthMiddleware, ACLMiddleware("user"))
+			r.Use(AuthMiddleware(auth), ACLMiddleware(auth, "user"))
 			r.Method(http.MethodGet, "/", nethttp.NewHandler(getContainers()))
 			r.Method(http.MethodGet, "/{name}", nethttp.NewHandler(getContainerByName()))
 			r.Method(http.MethodPost, "/{name}/import", nethttp.NewHandler(importContainer()))
