@@ -44,12 +44,8 @@ func Handler(auth *config.Authentication) *web.Service {
 	api.Route("/api/containers", func(r chi.Router) {
 		// require "admin" role group
 		r.Group(func(r chi.Router) {
-			r.Use(AuthMiddleware(auth), ACLMiddleware(auth, "admin"))
+			r.Use(AuthMiddleware(auth))
 			r.Method(http.MethodDelete, "/{name}", nethttp.NewHandler(deleteContainer()))
-		})
-		// requrie "user" role group
-		r.Group(func(r chi.Router) {
-			r.Use(AuthMiddleware(auth), ACLMiddleware(auth, "user"))
 			r.Method(http.MethodGet, "/", nethttp.NewHandler(getContainers()))
 			r.Method(http.MethodGet, "/{name}", nethttp.NewHandler(getContainerByName()))
 			r.Method(http.MethodPost, "/{name}/import", nethttp.NewHandler(importContainer()))
