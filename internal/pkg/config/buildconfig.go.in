@@ -4,10 +4,7 @@ import (
 	"path"
 )
 
-var (
-	ConfigFile         = "@SYSCONFDIR@/warewulf/warewulf.conf"
-	AuthenticationFile = "@SYSCONFDIR@/warewulf/authentication.conf"
-)
+var ConfigFile = "@SYSCONFDIR@/warewulf/warewulf.conf"
 
 type BuildConfig struct {
 	Bindir         string `yaml:"bindir,omitempty" default:"@BINDIR@"`
@@ -25,10 +22,8 @@ type BuildConfig struct {
 	WWClientdir    string `yaml:"wwclientdir,omitempty" default:"@WWCLIENTDIR@"`
 }
 
-const (
-	Version = "@VERSION@"
-	Release = "@RELEASE@"
-)
+const Version = "@VERSION@"
+const Release = "@RELEASE@"
 
 type TFTPConf struct {
 	EnabledP    *bool  `yaml:"enabled" default:"true"`
@@ -76,6 +71,10 @@ func (this WarewulfConf) GrubBoot() bool {
 
 func (paths BuildConfig) NodesConf() string {
 	return path.Join(paths.Sysconfdir, "warewulf", "nodes.conf")
+}
+
+func (paths BuildConfig) AuthenticationConf() string {
+	return path.Join(paths.Sysconfdir, "warewulf", "authentication.conf")
 }
 
 func (paths BuildConfig) OciBlobCachedir() string {

@@ -18,6 +18,7 @@ import (
 	"github.com/warewulf/warewulf/internal/app/wwctl/version"
 	warewulfconf "github.com/warewulf/warewulf/internal/pkg/config"
 	"github.com/warewulf/warewulf/internal/pkg/help"
+	"github.com/warewulf/warewulf/internal/pkg/util"
 	"github.com/warewulf/warewulf/internal/pkg/wwlog"
 )
 
@@ -31,12 +32,11 @@ var (
 		SilenceUsage:          true,
 		SilenceErrors:         true,
 	}
-	verboseArg            bool
-	DebugFlag             bool
-	LogLevel              int
-	WarewulfConfArg       string
-	AuthenticationConfArg string
-	AllowEmptyConf        bool
+	verboseArg      bool
+	DebugFlag       bool
+	LogLevel        int
+	WarewulfConfArg string
+	AllowEmptyConf  bool
 )
 
 func init() {
@@ -45,7 +45,6 @@ func init() {
 	rootCmd.PersistentFlags().IntVar(&LogLevel, "loglevel", wwlog.INFO, "Set log level to given string")
 	_ = rootCmd.PersistentFlags().MarkHidden("loglevel")
 	rootCmd.PersistentFlags().StringVar(&WarewulfConfArg, "warewulfconf", "", "Set the warewulf configuration file")
-	rootCmd.PersistentFlags().StringVar(&AuthenticationConfArg, "authenticationconf", "", "Set the warewulf authentication configuration file")
 	rootCmd.PersistentFlags().BoolVar(&AllowEmptyConf, "emptyconf", false, "Allow empty configuration")
 	_ = rootCmd.PersistentFlags().MarkHidden("emptyconf")
 	rootCmd.SetUsageTemplate(help.UsageTemplate)
@@ -90,21 +89,16 @@ func rootPersistentPreRunE(cmd *cobra.Command, args []string) (err error) {
 			err = conf.Read(warewulfconf.ConfigFile)
 		}
 	}
-
-	authentication := warewulfconf.GetAuthentication()
-	if !AllowEmptyConf {
-		if AuthenticationConfArg != "" {
-			err = authentication.Read(AuthenticationConfArg)
-		} else if os.Getenv("WAREWULF_AUTHENTICATION_CONF") != "" {
-			err = authentication.Read(os.Getenv("WAREWULF_AUTHENTICATION_CONF"))
-		} else {
-			err = authentication.Read(warewulfconf.AuthenticationFile)
-		}
-	}
-
 	if err != nil {
 		wwlog.Error("version: %s relase: %s", warewulfconf.Version, warewulfconf.Release)
 		return
+	}
+	authentication := warewulfconf.GetAuthentication()
+	if util.IsFile(conf.Paths.AuthenticationConf()) {
+		err = authentication.Read(conf.Paths.AuthenticationConf())
+		if err != nil {
+			wwlog.Warn("%w\n", err)
+		}
 	}
 	err = conf.SetDynamicDefaults()
 	return
