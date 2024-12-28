@@ -5,7 +5,10 @@ import (
 	"os"
 
 	"github.com/pkg/errors"
+	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/yaml.v3"
+
+	"github.com/warewulf/warewulf/internal/pkg/wwlog"
 )
 
 type User struct {
@@ -64,7 +67,8 @@ func (auth *Authentication) Authenticate(name, pass string) (*User, error) {
 	if user, ok := auth.userMap[name]; !ok {
 		return nil, fmt.Errorf("the user is not found")
 	} else {
-		if pass != user.Pass {
+		if err := bcrypt.CompareHashAndPassword([]byte(user.Pass), []byte(pass)); err != nil {
+			wwlog.Warn("%w\n", err)
 			return nil, PasswordWrongError
 		}
 		return &user, nil
