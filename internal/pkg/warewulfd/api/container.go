@@ -138,30 +138,34 @@ func deleteContainer() usecase.Interactor {
 	return u
 }
 
-func renameContainer() usecase.Interactor {
+func updateContainer() usecase.Interactor {
 	type renameContainerInput struct {
-		Name   string `path:"name"`
-		Target string `path:"target"`
-		Build  bool   `query:"build" default:"true" description:"Build the container image after renaming, default:'true'"`
+		Name    string `path:"name"`
+		NewName string `json:"name"`
+		Build   bool   `query:"build" default:"true" description:"Build the container image after renaming, default:'true'"`
 	}
 
 	u := usecase.NewInteractor(func(ctx context.Context, input renameContainerInput, output *Container) error {
-		crp := &wwapiv1.ContainerRenameParameter{
-			ContainerName: input.Name,
-			TargetName:    input.Target,
-			Build:         input.Build,
+		name := input.Name
+		if input.NewName != "" {
+			crp := &wwapiv1.ContainerRenameParameter{
+				ContainerName: input.Name,
+				TargetName:    input.NewName,
+				Build:         input.Build,
+			}
+
+			err := container_api.ContainerRename(crp)
+			if err != nil {
+				return err
+			}
+			name = input.NewName
 		}
 
-		err := container_api.ContainerRename(crp)
-		if err != nil {
-			return err
-		}
-
-		*output = *NewContainer(input.Target)
+		*output = *NewContainer(name)
 		return nil
 	})
-	u.SetTitle("Rename a container")
-	u.SetDescription("Rename an existing container with a new name")
+	u.SetTitle("Update or rename a container")
+	u.SetDescription("Update or rename an existing container")
 	u.SetTags("Container")
 
 	return u
