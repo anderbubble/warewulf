@@ -14,7 +14,6 @@ import (
 type User struct {
 	Name string `json:"name" yaml:"name"`
 	Pass string `json:"pass" yaml:"pass"`
-	Role string `json:"role" yaml:"role"`
 }
 
 type Authentication struct {
@@ -59,29 +58,17 @@ func (auth *Authentication) Read(confFileName string) error {
 }
 
 var (
-	UnauthorizedError  = errors.New("Unauthorized")
-	PasswordWrongError = errors.New("Wrong password")
+	UnauthorizedError = errors.New("Unauthorized")
 )
 
 func (auth *Authentication) Authenticate(name, pass string) (*User, error) {
 	if user, ok := auth.userMap[name]; !ok {
-		return nil, fmt.Errorf("the user is not found")
+		return nil, UnauthorizedError
 	} else {
 		if err := bcrypt.CompareHashAndPassword([]byte(user.Pass), []byte(pass)); err != nil {
 			wwlog.Warn("%w\n", err)
-			return nil, PasswordWrongError
+			return nil, UnauthorizedError
 		}
 		return &user, nil
 	}
-}
-
-func (auth *Authentication) CheckAccess(user *User, requiredRole string) error {
-	if target, ok := auth.userMap[user.Name]; !ok {
-		return fmt.Errorf("the user is not found")
-	} else {
-		if requiredRole != target.Role && target.Role != "admin" {
-			return UnauthorizedError
-		}
-	}
-	return nil
 }
