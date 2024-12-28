@@ -146,7 +146,7 @@ func NewOverlayFile(name string, path string, renderNodeName string) (*OverlayFi
 func getOverlayFile() usecase.Interactor {
 	type getOverlayByNameInput struct {
 		Name string `path:"name"`
-		Path string `query:"path"`
+		Path string `query:"path" required:"true"`
 		Node string `query:"render"`
 	}
 
@@ -196,7 +196,7 @@ func createOverlay() usecase.Interactor {
 func deleteOverlay() usecase.Interactor {
 	type deleteOverlayInput struct {
 		Name  string `path:"name"`
-		Force bool   `query:"force"`
+		Force bool   `query:"force" default:"false"`
 	}
 
 	u := usecase.NewInteractor(func(ctx context.Context, input deleteOverlayInput, output *Overlay) error {
