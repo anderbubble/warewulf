@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -93,7 +94,7 @@ users:
 	})
 
 	t.Run("test rename container", func(t *testing.T) {
-		req, err := http.NewRequest(http.MethodPost, srv.URL+"/api/containers/test-container/rename/new-container?build=true", nil)
+		req, err := http.NewRequest(http.MethodPatch, srv.URL+"/api/containers/test-container?build=true", bytes.NewBuffer([]byte(`{"name": "new-container"}`)))
 		assert.NoError(t, err)
 		req.SetBasicAuth("admin", "admin")
 

@@ -53,7 +53,7 @@ func Handler(auth *config.Authentication) *web.Service {
 			r.Method(http.MethodGet, "/", nethttp.NewHandler(getContainers()))
 			r.Method(http.MethodGet, "/{name}", nethttp.NewHandler(getContainerByName()))
 			r.Method(http.MethodPost, "/{name}/import", nethttp.NewHandler(importContainer()))
-			r.Method(http.MethodPost, "/{name}/rename/{target}", nethttp.NewHandler(renameContainer()))
+			r.Method(http.MethodPatch, "/{name}", nethttp.NewHandler(updateContainer()))
 			r.Method(http.MethodPost, "/{name}/build", nethttp.NewHandler(buildContainer()))
 			r.Method(http.MethodDelete, "/{name}", nethttp.NewHandler(deleteContainer()))
 		})
