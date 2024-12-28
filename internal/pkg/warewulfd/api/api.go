@@ -20,45 +20,56 @@ func Handler(auth *config.Authentication) *web.Service {
 	api.OpenAPISchema().SetDescription("This service provides an API to a Warewulf v4 server.")
 	api.OpenAPISchema().SetVersion(version.GetVersion())
 
-	api.Get("/api/raw-nodes", getRawNodes())
-	api.Get("/api/raw-nodes/{id}", getRawNodeByID())
-	api.Put("/api/raw-nodes/{id}", putRawNodeByID())
-
-	// node related rest apis
-	api.Get("/api/nodes", getNodes())
-	api.Get("/api/nodes/{id}", getNodeByID())
-	api.Put("/api/nodes/{id}", addNode())
-	api.Delete("/api/nodes/{id}", deleteNode())
-	api.Patch("/api/nodes/{id}", updateNode())
-	api.Post("/api/nodes/overlays/build", buildAllOverlays())
-	api.Post("/api/nodes/{id}/overlays/build", buildOverlays())
-
-	// profile related rest apis
-	api.Get("/api/profiles", getProfiles())
-	api.Get("/api/profiles/{id}", getProfileByID())
-	api.Put("/api/profiles/{id}", addProfile())
-	api.Patch("/api/profiles/{id}", updateProfile())
-	api.Delete("/api/profiles/{id}", deleteProfile())
-
-	// container related rest apis (with authentication)
-	api.Route("/api/containers", func(r chi.Router) {
-		// require "admin" role group
+	api.Route("/api/nodes", func(r chi.Router) {
 		r.Group(func(r chi.Router) {
 			r.Use(AuthMiddleware(auth))
-			r.Method(http.MethodDelete, "/{name}", nethttp.NewHandler(deleteContainer()))
+
+			r.Method(http.MethodGet, "/", nethttp.NewHandler(getNodes()))
+			r.Method(http.MethodGet, "/{id}", nethttp.NewHandler(getNodeByID()))
+			r.Method(http.MethodPut, "/{id}", nethttp.NewHandler(addNode()))
+			r.Method(http.MethodDelete, "/{id}", nethttp.NewHandler(deleteNode()))
+			r.Method(http.MethodPatch, "/{id}", nethttp.NewHandler(updateNode()))
+			r.Method(http.MethodPost, "/overlays/build", nethttp.NewHandler(buildAllOverlays()))
+			r.Method(http.MethodPost, "/{id}/overlays/build", nethttp.NewHandler(buildOverlays()))
+		})
+	})
+
+	api.Route("/api/profiles", func(r chi.Router) {
+		r.Group(func(r chi.Router) {
+			r.Use(AuthMiddleware(auth))
+
+			r.Method(http.MethodGet, "/", nethttp.NewHandler(getProfiles()))
+			r.Method(http.MethodGet, "/{id}", nethttp.NewHandler(getProfileByID()))
+			r.Method(http.MethodPut, "/{id}", nethttp.NewHandler(addProfile()))
+			r.Method(http.MethodPatch, "/{id}", nethttp.NewHandler(updateProfile()))
+			r.Method(http.MethodDelete, "/{id}", nethttp.NewHandler(deleteProfile()))
+		})
+	})
+
+	api.Route("/api/containers", func(r chi.Router) {
+		r.Group(func(r chi.Router) {
+			r.Use(AuthMiddleware(auth))
+
 			r.Method(http.MethodGet, "/", nethttp.NewHandler(getContainers()))
 			r.Method(http.MethodGet, "/{name}", nethttp.NewHandler(getContainerByName()))
 			r.Method(http.MethodPost, "/{name}/import", nethttp.NewHandler(importContainer()))
 			r.Method(http.MethodPost, "/{name}/rename/{target}", nethttp.NewHandler(renameContainer()))
 			r.Method(http.MethodPost, "/{name}/build", nethttp.NewHandler(buildContainer()))
+			r.Method(http.MethodDelete, "/{name}", nethttp.NewHandler(deleteContainer()))
 		})
 	})
 
-	api.Get("/api/overlays", getOverlays())
-	api.Get("/api/overlays/{name}", getOverlayByName())
-	api.Get("/api/overlays/{name}/file", getOverlayFile())
-	api.Put("/api/overlays/{name}", createOverlay())
-	api.Delete("/api/overlays/{name}", deleteOverlay())
+	api.Route("/api/overlays", func(r chi.Router) {
+		r.Group(func(r chi.Router) {
+			r.Use(AuthMiddleware(auth))
+
+			r.Method(http.MethodGet, "/", nethttp.NewHandler(getOverlays()))
+			r.Method(http.MethodGet, "/{name}", nethttp.NewHandler(getOverlayByName()))
+			r.Method(http.MethodGet, "/{name}/file", nethttp.NewHandler(getOverlayFile()))
+			r.Method(http.MethodPut, "/{name}", nethttp.NewHandler(createOverlay()))
+			r.Method(http.MethodDelete, "/{name}", nethttp.NewHandler(deleteOverlay()))
+		})
+	})
 
 	api.Docs("/api/docs", swgui.New)
 
