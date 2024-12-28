@@ -3,13 +3,10 @@ package config
 import (
 	"fmt"
 	"os"
-	"reflect"
 
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 )
-
-var cachedAuthentication Authentication
 
 type User struct {
 	Name string `json:"name" yaml:"name"`
@@ -24,17 +21,9 @@ type Authentication struct {
 }
 
 func NewAuthentication() *Authentication {
-	cachedAuthentication = Authentication{
-		userMap: make(map[string]User),
-	}
-	return &cachedAuthentication
-}
-
-func GetAuthentication() *Authentication {
-	if reflect.ValueOf(cachedAuthentication).IsZero() {
-		cachedAuthentication = *NewAuthentication()
-	}
-	return &cachedAuthentication
+	auth := new(Authentication)
+	auth.userMap = make(map[string]User)
+	return auth
 }
 
 func (auth *Authentication) ParseFromRaw(data []byte) error {
@@ -71,7 +60,7 @@ var (
 	PasswordWrongError = errors.New("Wrong password")
 )
 
-func (auth *Authentication) Auth(name, pass string) (*User, error) {
+func (auth *Authentication) Authenticate(name, pass string) (*User, error) {
 	if user, ok := auth.userMap[name]; !ok {
 		return nil, fmt.Errorf("the user is not found")
 	} else {
@@ -82,7 +71,7 @@ func (auth *Authentication) Auth(name, pass string) (*User, error) {
 	}
 }
 
-func (auth *Authentication) Access(user *User, requiredRole string) error {
+func (auth *Authentication) CheckAccess(user *User, requiredRole string) error {
 	if target, ok := auth.userMap[user.Name]; !ok {
 		return fmt.Errorf("the user is not found")
 	} else {

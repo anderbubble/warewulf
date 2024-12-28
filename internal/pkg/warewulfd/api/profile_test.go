@@ -18,7 +18,7 @@ func TestProfileAPI(t *testing.T) {
 	defer env.RemoveAll()
 
 	// prepareration
-	srv := httptest.NewServer(Handler())
+	srv := httptest.NewServer(Handler(nil))
 	defer srv.Close()
 
 	t.Run("get all profiles", func(t *testing.T) {
