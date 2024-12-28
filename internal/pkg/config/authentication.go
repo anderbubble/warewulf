@@ -38,7 +38,6 @@ func GetAuthentication() *Authentication {
 }
 
 func (auth *Authentication) ParseFromRaw(data []byte) error {
-	auth.conf = ""
 	err := yaml.Unmarshal(data, auth)
 	if err != nil {
 		return err
@@ -60,18 +59,8 @@ func (auth *Authentication) Read(confFileName string) error {
 		return err
 	} else {
 		auth.conf = confFileName
-		err := yaml.Unmarshal(data, auth)
-		if err != nil {
+		if err := auth.ParseFromRaw(data); err != nil {
 			return err
-		}
-		if len(auth.Users) == 0 {
-			return fmt.Errorf("no record users")
-		}
-		for _, user := range auth.Users {
-			if _, ok := auth.userMap[user.Name]; ok {
-				return fmt.Errorf("duplicated user names")
-			}
-			auth.userMap[user.Name] = user
 		}
 	}
 	return nil
