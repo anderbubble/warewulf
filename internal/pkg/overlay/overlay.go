@@ -22,9 +22,7 @@ import (
 	"github.com/warewulf/warewulf/internal/pkg/wwlog"
 )
 
-var (
-	ErrDoesNotExist = errors.New("overlay does not exist")
-)
+var ErrDoesNotExist = errors.New("overlay does not exist")
 
 // Overlay represents an overlay directory path.
 type Overlay string
@@ -129,7 +127,7 @@ func BuildAllOverlays(nodes []node.Node) error {
 
 func BuildSpecificOverlays(nodes []node.Node, overlayNames []string) error {
 	for _, n := range nodes {
-		wwlog.Info("Building overlay for %s: %v", n, overlayNames)
+		wwlog.Info("Building overlay for %s: %v", n.Id, overlayNames)
 		for _, overlayName := range overlayNames {
 			err := BuildOverlay(n, "", []string{overlayName})
 			if err != nil {
@@ -152,7 +150,7 @@ func BuildHostOverlay() error {
 	if err != nil {
 		return fmt.Errorf("could not build host overlay: %w ", err)
 	}
-	if !(stats.Mode() == os.FileMode(0750|os.ModeDir) || stats.Mode() == os.FileMode(0700|os.ModeDir)) {
+	if !(stats.Mode() == os.FileMode(0o750|os.ModeDir) || stats.Mode() == os.FileMode(0o700|os.ModeDir)) {
 		wwlog.SecWarn("Permissions of host overlay dir %s are %s (750 is considered as secure)", hostdir, stats.Mode())
 	}
 	return BuildOverlayIndir(hostData, []string{"host"}, "/")
@@ -196,7 +194,7 @@ func BuildOverlay(nodeConf node.Node, context string, overlayNames []string) err
 	overlayImage := OverlayImage(nodeConf.Id(), context, overlayNames)
 	overlayImageDir := path.Dir(overlayImage)
 
-	err := os.MkdirAll(overlayImageDir, 0750)
+	err := os.MkdirAll(overlayImageDir, 0o750)
 	if err != nil {
 		return fmt.Errorf("failed to create directory for %s: %s: %w", name, overlayImageDir, err)
 	}
@@ -398,7 +396,6 @@ func CarefulWriteBuffer(destFile string, buffer bytes.Buffer, backupFile bool, p
 				return fmt.Errorf("failed to create backup: %s -> %s.wwbackup %w", destFile, destFile, err)
 			}
 		}
-
 	}
 	w, err := os.OpenFile(destFile, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, perm)
 	if err != nil {
@@ -418,7 +415,8 @@ func RenderTemplateFile(fileName string, data TemplateStruct) (
 	buffer bytes.Buffer,
 	backupFile bool,
 	writeFile bool,
-	err error) {
+	err error,
+) {
 	backupFile = true
 	writeFile = true
 	// Build our FuncMap

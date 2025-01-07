@@ -33,9 +33,15 @@ func Handler() *web.Service {
 	api.Post("/api/containers/{name}/rename/{target}", renameContainer())
 	api.Post("/api/containers/{name}/build", buildContainer())
 
+	// overlays related rest apis
 	api.Get("/api/overlays", getOverlays())
 	api.Get("/api/overlays/{name}", getOverlayByName())
 	api.Get("/api/overlays/{name}/files/{path}", getOverlayFile())
+	api.Post("/api/overlays/{name}", createOverlay())
+	api.Post("/api/overlays/build", buildOverlay())
+	api.Delete("/api/overlays/{name}/{path}", deleteOverlay())
+	api.Get("/api/overlays/{name}/render/{path}", renderOverlay())
+	api.Post("/api/overlays/{name}/import/{path}", importOverlay())
 
 	api.Docs("/api/docs", swgui.New)
 
