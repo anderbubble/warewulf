@@ -75,8 +75,6 @@ func importContainer() usecase.Interactor {
 		NoHttps     bool   `json:"nohttps" default:"false" description:"Whether to use https for the registry URI, default:'false'"`
 		OciUserName string `json:"ociuser" description:"Username for the registry URI, if needed"`
 		OciPassword string `json:"ocipassword" description:"Password for the registry URI, if needed"`
-		Build       bool   `json:"build" default:"true" description:"Whether to build the container image, default:'true'"`
-		Force       bool   `json:"force" default:"false" description:"Whether to overwrite the existing container with the same name, default:'false'"`
 	}
 
 	u := usecase.NewInteractor(func(ctx context.Context, input importContainerInput, output *Container) error {
@@ -84,22 +82,21 @@ func importContainer() usecase.Interactor {
 			return errors.New("uri only supports docker:// prefix for now")
 		}
 
-		cip := &wwapiv1.ContainerImportParameter{
-			Source:      input.URI,
-			Name:        input.Name,
-			Force:       input.Force,
-			Build:       input.Build,
-			OciNoHttps:  input.NoHttps,
-			OciUsername: input.OciUserName,
-			OciPassword: input.OciPassword,
+		if !container.ValidName(input.Name) {
+			return fmt.Errorf("VNFS name contains illegal characters: %s", input.Name)
 		}
 
-		containerName, err := container_api.ContainerImport(cip)
+		sctx, err := container_api.GetSystemContext(input.NoHttps, input.OciUserName, input.OciPassword, "")
 		if err != nil {
 			return err
 		}
 
-		*output = *NewContainer(containerName)
+		err = container.ImportDocker(input.URI, input.Name, sctx)
+		if err != nil {
+			return err
+		}
+
+		*output = *NewContainer(input.Name)
 		return nil
 	})
 	u.SetTitle("Import a container")
@@ -165,8 +162,8 @@ func renameContainer() usecase.Interactor {
 
 func buildContainer() usecase.Interactor {
 	type buildContainerInput struct {
-		Name    string `path:"name"`
-		Force   bool   `query:"force" default:"false" description:"Whether to build a container forcely, default:'false'"`
+		Name  string `path:"name"`
+		Force bool   `query:"force" default:"false" description:"Whether to build a container forcely, default:'false'"`
 	}
 
 	u := usecase.NewInteractor(func(ctx context.Context, input buildContainerInput, output *Container) error {
