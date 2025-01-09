@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	apinode "github.com/warewulf/warewulf/internal/pkg/api/node"
+	"github.com/warewulf/warewulf/internal/pkg/warewulfd"
 
 	"github.com/spf13/cobra"
 	apiprofile "github.com/warewulf/warewulf/internal/pkg/api/profile"
@@ -111,7 +112,6 @@ func CobraRunE(cmd *cobra.Command, args []string) error {
 			yes := apiutil.ConfirmationPrompt(fmt.Sprintf("Are you sure you want to modify %d nodes", len(modifiedProfileMap)))
 			if yes {
 				err = apiprofile.ProfileDelete(&wwapiv1.NodeDeleteParameter{NodeNames: pList, Force: true})
-
 				if err != nil {
 					wwlog.Verbose("Problem deleting nodes before modification %s", err)
 				}
@@ -131,5 +131,5 @@ func CobraRunE(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	return nil
+	return warewulfd.DaemonReload()
 }
