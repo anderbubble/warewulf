@@ -9,7 +9,6 @@ import (
 	"github.com/warewulf/warewulf/internal/pkg/api/routes/wwapiv1"
 	"github.com/warewulf/warewulf/internal/pkg/api/util"
 	"github.com/warewulf/warewulf/internal/pkg/node"
-	"github.com/warewulf/warewulf/internal/pkg/warewulfd"
 	"github.com/warewulf/warewulf/internal/pkg/wwlog"
 	"gopkg.in/yaml.v3"
 )
@@ -83,11 +82,6 @@ func CobraRunE(vars *variables) func(cmd *cobra.Command, args []string) (err err
 				return err
 			}
 		}
-		err = apiprofile.ProfileSet(&set)
-		if err != nil {
-			return err
-		}
-
-		return warewulfd.DaemonReload()
+		return apiprofile.ProfileSet(&set)
 	}
 }

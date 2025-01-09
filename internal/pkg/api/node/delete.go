@@ -8,13 +8,11 @@ import (
 	"github.com/warewulf/warewulf/internal/pkg/api/routes/wwapiv1"
 	"github.com/warewulf/warewulf/internal/pkg/hostlist"
 	"github.com/warewulf/warewulf/internal/pkg/node"
-	"github.com/warewulf/warewulf/internal/pkg/warewulfd/daemon"
 	"github.com/warewulf/warewulf/internal/pkg/wwlog"
 )
 
 // NodeDelete adds nodes for management by Warewulf.
 func NodeDelete(ndp *wwapiv1.NodeDeleteParameter) (err error) {
-
 	var nodeList []node.Node
 	nodeList, err = NodeDeleteParameterCheck(ndp, false)
 	if err != nil {
@@ -45,10 +43,6 @@ func NodeDelete(ndp *wwapiv1.NodeDeleteParameter) (err error) {
 		return fmt.Errorf("failed to persist nodedb: %w", err)
 	}
 
-	err = daemon.DaemonReload()
-	if err != nil {
-		return fmt.Errorf("failed to reload warewulf daemon: %w", err)
-	}
 	return
 }
 
@@ -56,7 +50,6 @@ func NodeDelete(ndp *wwapiv1.NodeDeleteParameter) (err error) {
 // Output to the console if console is true.
 // Returns the nodes to delete.
 func NodeDeleteParameterCheck(ndp *wwapiv1.NodeDeleteParameter, console bool) (nodeList []node.Node, err error) {
-
 	if ndp == nil {
 		err = fmt.Errorf("NodeDeleteParameter is nil")
 		return

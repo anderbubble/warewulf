@@ -7,7 +7,6 @@ import (
 	"github.com/warewulf/warewulf/internal/pkg/api/routes/wwapiv1"
 	"github.com/warewulf/warewulf/internal/pkg/node"
 	"github.com/warewulf/warewulf/internal/pkg/util"
-	"github.com/warewulf/warewulf/internal/pkg/warewulfd/daemon"
 	"github.com/warewulf/warewulf/internal/pkg/wwlog"
 	"gopkg.in/yaml.v3"
 )
@@ -23,9 +22,6 @@ func NodeSet(set *wwapiv1.ConfSetParameter) (err error) {
 		return err
 	}
 	if err = nodeDB.Persist(); err != nil {
-		return err
-	}
-	if err = daemon.DaemonReload(); err != nil {
 		return err
 	}
 	return
@@ -92,7 +88,6 @@ func NodeSetParameterCheck(set *wwapiv1.ConfSetParameter) (nodeDB node.NodesYaml
 						delete(disk.Partitions, set.PartitionDelete)
 					} else {
 						return nodeDB, count, fmt.Errorf("partition doesn't exist: %s", set.PartitionDelete)
-
 					}
 				}
 			}

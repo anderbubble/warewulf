@@ -8,10 +8,10 @@ import (
 	"github.com/warewulf/warewulf/internal/pkg/api/routes/wwapiv1"
 	"github.com/warewulf/warewulf/internal/pkg/api/util"
 	"github.com/warewulf/warewulf/internal/pkg/node"
+	"github.com/warewulf/warewulf/internal/pkg/warewulfd/daemon"
 )
 
 func CobraRunE(cmd *cobra.Command, args []string) (err error) {
-
 	ndp := wwapiv1.NodeDeleteParameter{
 		Force:     SetForce,
 		NodeNames: args,
@@ -33,5 +33,10 @@ func CobraRunE(cmd *cobra.Command, args []string) (err error) {
 			return
 		}
 	}
-	return apiNode.NodeDelete(&ndp)
+	err = apiNode.NodeDelete(&ndp)
+	if err != nil {
+		return err
+	}
+
+	return daemon.DaemonReload()
 }

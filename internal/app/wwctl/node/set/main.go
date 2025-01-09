@@ -10,6 +10,7 @@ import (
 	"github.com/warewulf/warewulf/internal/pkg/api/util"
 	"github.com/warewulf/warewulf/internal/pkg/hostlist"
 	"github.com/warewulf/warewulf/internal/pkg/node"
+	"github.com/warewulf/warewulf/internal/pkg/warewulfd/daemon"
 	"github.com/warewulf/warewulf/internal/pkg/wwlog"
 	"gopkg.in/yaml.v3"
 )
@@ -85,6 +86,11 @@ func CobraRunE(vars *variables) func(cmd *cobra.Command, args []string) (err err
 				return nil
 			}
 		}
-		return apinode.NodeSet(&set)
+		err = apinode.NodeSet(&set)
+		if err != nil {
+			return err
+		}
+
+		return daemon.DaemonReload()
 	}
 }
