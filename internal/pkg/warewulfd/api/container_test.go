@@ -13,13 +13,13 @@ import (
 
 func TestContainerAPI(t *testing.T) {
 	env := testenv.New(t)
-	defer env.RemoveAll(t)
+	defer env.RemoveAll()
 
 	t.Run("test all containers related apis", func(t *testing.T) {
 		// prepareration
 		srv := httptest.NewServer(Handler())
 		defer srv.Close()
-		env.WriteFile(t, path.Join(testenv.WWChrootdir, "test-container/rootfs/file"), `test`)
+		env.WriteFile(path.Join(testenv.WWChrootdir, "test-container/rootfs/file"), `test`)
 
 		// test get all containers
 		req, err := http.NewRequest(http.MethodGet, srv.URL+"/api/containers", nil)
