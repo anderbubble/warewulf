@@ -22,8 +22,12 @@ func Handler() *web.Service {
 	api.Get("/api/nodes", getNodes())
 	api.Get("/api/nodes/{id}", getNodeByID())
 
+	// profile related rest apis
 	api.Get("/api/profiles", getProfiles())
 	api.Get("/api/profiles/{id}", getProfileByID())
+	api.Put("/api/profiles/{id}", addProfile())
+	api.Patch("/api/profiles/{id}", updateProfile())
+	api.Delete("/api/profiles/{id}", deleteProfile())
 
 	// container related rest apis
 	api.Get("/api/containers", getContainers())

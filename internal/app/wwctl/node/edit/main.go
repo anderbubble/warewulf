@@ -14,7 +14,7 @@ import (
 	apiutil "github.com/warewulf/warewulf/internal/pkg/api/util"
 	"github.com/warewulf/warewulf/internal/pkg/node"
 	"github.com/warewulf/warewulf/internal/pkg/util"
-	"github.com/warewulf/warewulf/internal/pkg/warewulfd"
+	"github.com/warewulf/warewulf/internal/pkg/warewulfd/daemon"
 	"github.com/warewulf/warewulf/internal/pkg/wwlog"
 	"gopkg.in/yaml.v3"
 )
@@ -130,7 +130,7 @@ func CobraRunE(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	err = warewulfd.DaemonReload()
+	err = daemon.DaemonReload()
 	if err != nil {
 		return fmt.Errorf("failed to reload warewulf daemon: %w", err)
 	}

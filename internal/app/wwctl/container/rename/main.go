@@ -7,7 +7,7 @@ import (
 	api "github.com/warewulf/warewulf/internal/pkg/api/container"
 	"github.com/warewulf/warewulf/internal/pkg/api/routes/wwapiv1"
 	"github.com/warewulf/warewulf/internal/pkg/container"
-	"github.com/warewulf/warewulf/internal/pkg/warewulfd"
+	"github.com/warewulf/warewulf/internal/pkg/warewulfd/daemon"
 	"github.com/warewulf/warewulf/internal/pkg/wwlog"
 )
 
@@ -40,14 +40,14 @@ func CobraRunE(cmd *cobra.Command, args []string) (err error) {
 		return
 	}
 
-	err = warewulfd.DaemonStatus()
+	err = daemon.DaemonStatus()
 	if err != nil {
 		// warewulfd is not running, skip
 		return nil
 	}
 
 	// else reload daemon to apply new changes
-	err = warewulfd.DaemonReload()
+	err = daemon.DaemonReload()
 
 	wwlog.Info("Container %s successfully renamed as %s", crp.ContainerName, crp.TargetName)
 	return
