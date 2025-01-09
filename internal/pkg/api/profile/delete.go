@@ -6,7 +6,7 @@ import (
 	"github.com/warewulf/warewulf/internal/pkg/api/routes/wwapiv1"
 	"github.com/warewulf/warewulf/internal/pkg/hostlist"
 	"github.com/warewulf/warewulf/internal/pkg/node"
-	"github.com/warewulf/warewulf/internal/pkg/warewulfd"
+	"github.com/warewulf/warewulf/internal/pkg/warewulfd/daemon"
 	"github.com/warewulf/warewulf/internal/pkg/wwlog"
 )
 
@@ -30,7 +30,7 @@ func ProfileDelete(ndp *wwapiv1.NodeDeleteParameter) (err error) {
 	if err != nil {
 		return fmt.Errorf("failed to persist nodedb: %w", err)
 	}
-	err = warewulfd.DaemonReload()
+	err = daemon.DaemonReload()
 	if err != nil {
 		return fmt.Errorf("failed to reload warewulf daemon: %w", err)
 	}

@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	containerList "github.com/warewulf/warewulf/internal/app/wwctl/container/list"
 	"github.com/warewulf/warewulf/internal/pkg/testenv"
-	"github.com/warewulf/warewulf/internal/pkg/warewulfd"
+	"github.com/warewulf/warewulf/internal/pkg/warewulfd/daemon"
 	"github.com/warewulf/warewulf/internal/pkg/wwlog"
 )
 
@@ -17,7 +17,7 @@ func Test_Rename(t *testing.T) {
 	env := testenv.New(t)
 	env.WriteFile(path.Join(testenv.WWChrootdir, "test-container/rootfs/file"), `test`)
 	defer env.RemoveAll()
-	warewulfd.SetNoDaemon()
+	daemon.SetNoDaemon()
 
 	// first we will verify that there is an existing container
 	t.Run("container list", func(t *testing.T) {
