@@ -93,7 +93,6 @@ func ProfileSetParameterCheck(set *wwapiv1.ConfSetParameter) (nodeDB node.NodesY
 						delete(disk.Partitions, set.PartitionDelete)
 					} else {
 						return nodeDB, count, fmt.Errorf("partition doesn't exist: %s", set.PartitionDelete)
-
 					}
 				}
 			}
