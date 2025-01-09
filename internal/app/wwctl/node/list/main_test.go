@@ -430,8 +430,6 @@ func TestListMultipleFormats(t *testing.T) {
 			stdout: `
 - profiles:
     - default
-  kernel: {}
-  ipmi: {}
 `,
 			inDb: `
 nodeprofiles:
@@ -450,9 +448,7 @@ nodes:
   {
     "profiles": [
       "default"
-    ],
-    "kernel": {},
-    "ipmi": {}
+    ]
   }
 ]
 `,
@@ -473,16 +469,12 @@ nodes:
   {
     "profiles": [
       "default"
-    ],
-    "kernel": {},
-    "ipmi": {}
+    ]
   },
   {
     "profiles": [
       "default"
-    ],
-    "kernel": {},
-    "ipmi": {}
+    ]
   }
 ]
 `,
@@ -504,12 +496,8 @@ nodes:
 			stdout: `
 - profiles:
     - default
-  kernel: {}
-  ipmi: {}
 - profiles:
     - default
-  kernel: {}
-  ipmi: {}
 `,
 			inDb: `
 nodeprofiles:

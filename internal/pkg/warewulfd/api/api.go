@@ -19,8 +19,14 @@ func Handler() *web.Service {
 	api.Get("/api/raw-nodes/{id}", getRawNodeByID())
 	api.Put("/api/raw-nodes/{id}", putRawNodeByID())
 
+	// node related rest apis
 	api.Get("/api/nodes", getNodes())
 	api.Get("/api/nodes/{id}", getNodeByID())
+	api.Put("/api/nodes/{id}", addNode())
+	api.Delete("/api/nodes/{id}", deleteNode())
+	api.Patch("/api/nodes/{id}", updateNode())
+	api.Post("/api/nodes/overlays/build", buildAllOverlays())
+	api.Post("/api/nodes/{id}/overlays/build", buildOverlays())
 
 	// profile related rest apis
 	api.Get("/api/profiles", getProfiles())
