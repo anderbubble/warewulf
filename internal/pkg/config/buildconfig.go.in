@@ -4,7 +4,10 @@ import (
 	"path"
 )
 
-var ConfigFile = "@SYSCONFDIR@/warewulf/warewulf.conf"
+var (
+	ConfigFile         = "@SYSCONFDIR@/warewulf/warewulf.conf"
+	AuthenticationFile = "@SYSCONFDIR@/warewulf/authentication.conf"
+)
 
 type BuildConfig struct {
 	Bindir         string `yaml:"bindir,omitempty" default:"@BINDIR@"`
@@ -22,8 +25,10 @@ type BuildConfig struct {
 	WWClientdir    string `yaml:"wwclientdir,omitempty" default:"@WWCLIENTDIR@"`
 }
 
-const Version = "@VERSION@"
-const Release = "@RELEASE@"
+const (
+	Version = "@VERSION@"
+	Release = "@RELEASE@"
+)
 
 type TFTPConf struct {
 	EnabledP    *bool  `yaml:"enabled" default:"true"`
