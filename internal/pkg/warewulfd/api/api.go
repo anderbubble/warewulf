@@ -1,7 +1,11 @@
 package api
 
 import (
+	"net/http"
+
+	"github.com/go-chi/chi/v5"
 	"github.com/swaggest/openapi-go/openapi3"
+	"github.com/swaggest/rest/nethttp"
 	"github.com/swaggest/rest/web"
 	swgui "github.com/swaggest/swgui/v5emb"
 
@@ -35,13 +39,23 @@ func Handler() *web.Service {
 	api.Patch("/api/profiles/{id}", updateProfile())
 	api.Delete("/api/profiles/{id}", deleteProfile())
 
-	// container related rest apis
-	api.Get("/api/containers", getContainers())
-	api.Get("/api/containers/{name}", getContainerByName())
-	api.Post("/api/containers/{name}/import", importContainer())
-	api.Delete("/api/containers/{name}", deleteContainer())
-	api.Post("/api/containers/{name}/rename/{target}", renameContainer())
-	api.Post("/api/containers/{name}/build", buildContainer())
+	// container related rest apis (with authentication)
+	api.Route("/api/containers", func(r chi.Router) {
+		// require "admin" role group
+		r.Group(func(r chi.Router) {
+			r.Use(AuthMiddleware, ACLMiddleware("admin"))
+			r.Method(http.MethodDelete, "/{name}", nethttp.NewHandler(deleteContainer()))
+		})
+		// requrie "user" role group
+		r.Group(func(r chi.Router) {
+			r.Use(AuthMiddleware, ACLMiddleware("user"))
+			r.Method(http.MethodGet, "/", nethttp.NewHandler(getContainers()))
+			r.Method(http.MethodGet, "/{name}", nethttp.NewHandler(getContainerByName()))
+			r.Method(http.MethodPost, "/{name}/import", nethttp.NewHandler(importContainer()))
+			r.Method(http.MethodPost, "/{name}/rename/{target}", nethttp.NewHandler(renameContainer()))
+			r.Method(http.MethodPost, "/{name}/build", nethttp.NewHandler(buildContainer()))
+		})
+	})
 
 	api.Get("/api/overlays", getOverlays())
 	api.Get("/api/overlays/{name}", getOverlayByName())

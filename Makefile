@@ -96,6 +96,7 @@ install: build docs
 	# wwctl genconfig to get the compiled in paths to warewulf.conf
 	install -d -m 0755 $(DESTDIR)$(DATADIR)/warewulf/bmc
 	test -f $(DESTDIR)$(WWCONFIGDIR)/warewulf.conf || ./wwctl --warewulfconf etc/warewulf.conf genconfig warewulfconf print> $(DESTDIR)$(WWCONFIGDIR)/warewulf.conf
+	test -f $(DESTDIR)$(WWCONFIGDIR)/authentication.conf || install -m 0600 etc/authentication.conf $(DESTDIR)$(WWCONFIGDIR)
 	test -f $(DESTDIR)$(WWCONFIGDIR)/nodes.conf || install -m 0644 etc/nodes.conf $(DESTDIR)$(WWCONFIGDIR)
 	for f in etc/examples/*.ww; do install -m 0644 $$f $(DESTDIR)$(WWCONFIGDIR)/examples/; done
 	for f in etc/ipxe/*.ipxe; do install -m 0644 $$f $(DESTDIR)$(WWCONFIGDIR)/ipxe/; done
