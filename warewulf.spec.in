@@ -172,6 +172,7 @@ getent group %{wwgroup} >/dev/null || groupadd -r %{wwgroup}
 %config(noreplace) %{_sysconfdir}/warewulf/grub
 %config(noreplace) %{_sysconfdir}/logrotate.d/warewulfd.conf
 %config(noreplace) %attr(0640,-,-) %{_sysconfdir}/warewulf/nodes.conf
+%config(noreplace) %attr(0640,-,-) %{_sysconfdir}/warewulf/authentication.conf
 
 %{_sysconfdir}/bash_completion.d/wwctl
 
