@@ -136,6 +136,10 @@ func deleteNode() usecase.Interactor {
 			return delErr
 		}
 
+		if err := registry.Persist(); err != nil {
+			return err
+		}
+
 		*output = *node
 
 		_ = daemon.DaemonReload()
