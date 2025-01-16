@@ -61,6 +61,30 @@ func getNodeByID() usecase.Interactor {
 	return u
 }
 
+func getRawNodeByID() usecase.Interactor {
+	type getNodeByIDInput struct {
+		ID string `path:"id"`
+	}
+
+	u := usecase.NewInteractor(func(ctx context.Context, input getNodeByIDInput, output *node.Node) error {
+		if registry, err := node.New(); err != nil {
+			return err
+		} else {
+			if node_, ok := registry.Nodes[input.ID]; !ok {
+				return status.Wrap(fmt.Errorf("node not found: %v", input.ID), status.NotFound)
+			} else {
+				*output = *node_
+				return nil
+			}
+		}
+	})
+	u.SetTitle("Get a raw node")
+	u.SetDescription("Get a raw node by its ID, without values from associated profiles.")
+	u.SetTags("Node")
+	u.SetExpectedErrors(status.NotFound)
+	return u
+}
+
 func getNodeFields() usecase.Interactor {
 	type getNodeByIDInput struct {
 		ID string `path:"id"`

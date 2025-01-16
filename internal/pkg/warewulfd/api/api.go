@@ -26,6 +26,7 @@ func Handler(auth *config.Authentication) *web.Service {
 
 			r.Method(http.MethodGet, "/", nethttp.NewHandler(getNodes()))
 			r.Method(http.MethodGet, "/{id}", nethttp.NewHandler(getNodeByID()))
+			r.Method(http.MethodGet, "/{id}/raw", nethttp.NewHandler(getRawNodeByID()))
 			r.Method(http.MethodPut, "/{id}", nethttp.NewHandler(addNode()))
 			r.Method(http.MethodDelete, "/{id}", nethttp.NewHandler(deleteNode()))
 			r.Method(http.MethodPatch, "/{id}", nethttp.NewHandler(updateNode()))

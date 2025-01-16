@@ -111,6 +111,20 @@ func TestNodeAPI(t *testing.T) {
 		assert.JSONEq(t, `{"kernel": {"version": "v1.0.1-newversion", "args": "kernel-args"}}`, string(body))
 	})
 
+	t.Run("get one specific (raw) node", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodGet, srv.URL+"/api/nodes/test/raw", nil)
+		assert.NoError(t, err)
+
+		resp, err := http.DefaultTransport.RoundTrip(req)
+		assert.NoError(t, err)
+
+		body, err := io.ReadAll(resp.Body)
+		assert.NoError(t, err)
+		assert.NoError(t, resp.Body.Close())
+
+		assert.JSONEq(t, `{"kernel": {"version": "v1.0.1-newversion", "args": "kernel-args"}}`, string(body))
+	})
+
 	t.Run("test build all nodes overlays", func(t *testing.T) {
 		req, err := http.NewRequest(http.MethodPost, srv.URL+"/api/nodes/overlays/build", nil)
 		assert.NoError(t, err)
