@@ -71,7 +71,8 @@ func addProfile() usecase.Interactor {
 
 		*output = *(registry.NodeProfiles[input.ID])
 
-		return daemon.DaemonReload()
+		_ = daemon.DaemonReload()
+		return nil
 	})
 	u.SetTitle("Add a profile")
 	u.SetDescription("Add a new profile for nodes")
@@ -106,7 +107,9 @@ func updateProfile() usecase.Interactor {
 		}
 
 		*output = *profilePtr
-		return daemon.DaemonReload()
+
+		_ = daemon.DaemonReload()
+		return nil
 	})
 	u.SetTitle("Update an existing profile")
 	u.SetDescription("Update an existing profile")
@@ -155,7 +158,9 @@ func deleteProfile() usecase.Interactor {
 		}
 
 		*output = *profile
-		return daemon.DaemonReload()
+
+		_ = daemon.DaemonReload()
+		return nil
 	})
 	u.SetTitle("Delete an existing profile")
 	u.SetDescription("Delete an existing profile")

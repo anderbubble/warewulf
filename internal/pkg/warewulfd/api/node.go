@@ -105,7 +105,8 @@ func addNode() usecase.Interactor {
 
 		*output = *(registry.Nodes[input.ID])
 
-		return daemon.DaemonReload()
+		_ = daemon.DaemonReload()
+		return nil
 	})
 	u.SetTitle("Add a node")
 	u.SetDescription("Add a new node")
@@ -136,6 +137,8 @@ func deleteNode() usecase.Interactor {
 		}
 
 		*output = *node
+
+		_ = daemon.DaemonReload()
 		return nil
 	})
 	u.SetTitle("Delete an existing node")
@@ -171,6 +174,8 @@ func updateNode() usecase.Interactor {
 		}
 
 		*output = *nodePtr
+
+		_ = daemon.DaemonReload()
 		return nil
 	})
 	u.SetTitle("Update an existing node")
