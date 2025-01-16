@@ -157,6 +157,10 @@ func deleteProfile() usecase.Interactor {
 			return delErr
 		}
 
+		if err := registry.Persist(); err != nil {
+			return err
+		}
+
 		*output = *profile
 
 		_ = daemon.DaemonReload()
