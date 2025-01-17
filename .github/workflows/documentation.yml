@@ -45,7 +45,14 @@ jobs:
       - name: Include man pages
         run: |
           mkdir -p userdocs/reference/man5
-          for f in docs/man/man5/*.5; do pandoc -f man -t rst -o userdocs/reference/man5/$(basename ${f%.5}.rst) $f; done
+          for f in docs/man/man5/*.5
+          do
+            title="$(basename "${f%.5}")"'(5)'
+            output="userdocs/reference/man5/$(basename "${f%.5}.rst")"
+            line=$(printf '=%.0s' $(seq ${#title}))
+            printf "%s\n%s\n%s\n\n" "$line" "$title" "$line" > "$output"
+            pandoc -f man -t rst "$f" >> "$output"
+          done
 
       - name: Build web documentation
         run: |
