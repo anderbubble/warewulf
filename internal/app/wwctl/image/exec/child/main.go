@@ -78,7 +78,7 @@ func CobraRunE(cmd *cobra.Command, args []string) (err error) {
 	if err != nil {
 		return fmt.Errorf("failed to mount: %w", err)
 	}
-	ps1Str := fmt.Sprintf("[%s|%s] Warewulf> ", imageName, exitEval)
+	ps1Str := fmt.Sprintf(`warewulf:%s[%s] \w> `, imageName, exitEval)
 	if len(lowerObjects) != 0 && nodename == "" {
 		options := fmt.Sprintf("lowerdir=%s,upperdir=%s,workdir=%s",
 			path.Join(runDir, "lower"), imagePath, path.Join(runDir, "work"))
@@ -114,11 +114,11 @@ func CobraRunE(cmd *cobra.Command, args []string) (err error) {
 		if err != nil {
 			return fmt.Errorf("couldn't create overlay for node render overlay: %s", err)
 		}
-		ps1Str = fmt.Sprintf("[%s|ro|%s] Warewulf> ", imageName, nodename)
+		ps1Str = fmt.Sprintf(`warewulf:%s[ro|%s] \w> `, imageName, nodename)
 	}
 	if !image.IsWriteAble(imageName) && nodename == "" {
 		wwlog.Verbose("mounting %s ro", imagePath)
-		ps1Str = fmt.Sprintf("[%s|ro] Warewulf> ", imageName)
+		ps1Str = fmt.Sprintf(`warewulf:%s[ro] \w> `, imageName)
 		err = syscall.Mount(imagePath, imagePath, "", syscall.MS_BIND, "")
 		if err != nil {
 			return fmt.Errorf("failed to prepare bind mount: %w", err)

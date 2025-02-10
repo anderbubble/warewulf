@@ -23,6 +23,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 - Removed partial support for regex searches in node and profile lists. #1635
 
+### Changed
+
+- Update PS1 during `wwctl image shell` to include working directory. #1245
+
 ## v4.6.0rc2, 2025-02-07
 
 ### Added
