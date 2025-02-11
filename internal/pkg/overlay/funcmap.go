@@ -130,3 +130,21 @@ func importSoftlink(lnk string) string {
 func softlink(target string) string {
 	return fmt.Sprintf("{{ /* softlink \"%s\" */ }}", target)
 }
+
+func uniqueField(sep string, index int, input string) string {
+	inputLines := strings.Split(input, "\n")
+	var outputLines []string
+	found := make(map[string]bool)
+	for _, line := range inputLines {
+		inputFields := strings.Split(line, sep)
+		if len(inputFields) > index {
+			field := inputFields[index]
+			if found[field] {
+				continue
+			}
+			found[field] = true
+		}
+		outputLines = append(outputLines, line)
+	}
+	return strings.Join(outputLines, "\n")
+}

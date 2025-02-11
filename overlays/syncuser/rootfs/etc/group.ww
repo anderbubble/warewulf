@@ -1,2 +1,1 @@
-{{IncludeFrom $.ImageName "/etc/group"}}
-{{Include "/etc/group"}}
+{{ printf "%s\n%s" (IncludeFrom $.ImageName "/etc/group") (Include (printf "%s/%s" .Paths.Sysconfdir "group")) | UniqueField ":" 0 }}

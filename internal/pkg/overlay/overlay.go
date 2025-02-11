@@ -500,6 +500,7 @@ func RenderTemplateFile(fileName string, data TemplateStruct) (
 			backupFile = false
 			return ""
 		},
+		"UniqueField": uniqueField,
 	}
 
 	// Merge sprig.FuncMap with our FuncMap
