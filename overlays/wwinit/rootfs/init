@@ -1,14 +1,13 @@
 #!/bin/sh
-#
-# This is one of those types of files that you shouldn't edit unless you really
-# know what you are doing and even then you should make a backup.
-#
-# Edit at your own risk! DANGER DANGER.
 
+echo "Warewulf pre-init (/init)"
+echo
+echo "Mounting kernel file systems..."
 mountpoint -q /proc || (mkdir -p /proc && mount -t proc proc /proc && echo "Mounted /proc")
 mountpoint -q /dev || (mkdir -p /dev && mount -t devtmpfs devtmpfs /dev && echo "Mounted /dev")
 mountpoint -q /sys || (mkdir -p /sys && mount -t sysfs sysfs /sys && echo "Mounted /sys")
-
+echo
+echo "Loading /warewulf/config..."
 if [ -f "/warewulf/config" ]; then
     . /warewulf/config
 else
@@ -17,23 +16,20 @@ else
     sleep 60
     echo b > /proc/sysrq-trigger || /sbin/reboot -f
 fi
-
 echo
-echo "Warewulf v4 is now booting: ${WWHOSTNAME}"
-echo
-
-chmod 755 /warewulf/wwinit
-
-if [ -z "${WWROOT}" -o "${WWROOT}" = "initramfs" ]; then
-    echo "Retaining initramfs and invoking /warewulf/wwinit..."
+echo "Configuring root file system..."
+chmod +rx /warewulf/wwinit
+WWROOT="${WWROOT:-initramfs}"
+if [ "${WWROOT}" = "initramfs" ]; then
+    echo "WWROOT=${WWROOT}: using initial rootfs and invoking /warewulf/wwinit..."
     exec /warewulf/wwinit
 elif [ "${WWROOT}" = "ramfs" -o "${WWROOT}" = "tmpfs" ]; then
-    echo "Setting up new ${WWROOT} rootfs..."
+    echo "WWROOT=${WWROOT}: setting up new ${WWROOT} rootfs (/newroot)..."
     mkdir /newroot
     mount wwroot /newroot -t ${WWROOT} -o mpol=interleave # mpol ignored for ramfs
     tar -cf - --exclude ./proc --exclude ./sys --exclude ./dev --exclude --exclude ./newroot . | tar -xf - -C /newroot
     mkdir /newroot/proc /newroot/dev /newroot/sys 2>/dev/null
-    echo "Switching to new rootfs and invoking /warewulf/wwinit..."
+    echo "Switching to new rootfs (/newroot) and invoking /warewulf/wwinit..."
     exec /sbin/switch_root /newroot /warewulf/wwinit
 else
     echo "ERROR: Unrecognized rootfs type requested: ${WWROOT}"
@@ -43,7 +39,7 @@ else
 fi
 
 echo
-echo "ERROR: There was a problem with the initial provisioning process."
+echo "ERROR: wwinit encountered a problem."
 echo "Rebooting in 1 minute..."
 sleep 60
 echo b > /proc/sysrq-trigger || /sbin/reboot -f
