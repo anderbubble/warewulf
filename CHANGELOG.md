@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Added support for a DNSSEARCH netdev tag in network configuration overlays. #1256
 - Added `WW_HISTFILE` to control shell history location during `wwctl image shell`. #1732
 - Added target help in Makefile. #1740
+- Add support for an `IPXEMenuEntry` tag to select the boot method during iPXE.
 
 ### Changed
 
@@ -29,6 +30,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Update syncuser documentation. #1736
 - Update PS1 during `wwctl image shell` to include working directory by default,
   and to include `PS1` from the environment if present. #1245
+- DHCP template generates as much of the subnet and range definition as possible. #1469
+- Updated overlay flags to `wwctl <node|profile> <add|set> [--runtime-overlays|--system-overlays]`. #1495
+- Update ipxe and grub configuration for clarity and logging. #1156
+- Defined a menu for iPXE. #1156
 
 ### Fixed
 
@@ -45,6 +50,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Remove redundant `wwctl genconfig completions` command. #1716
 - Remove syncuser warning messages in `wwctl` that assume its use. #1321
 - Remove syncuser from the list of default runtime overlays. #1322
+- Removed `dracut.ipxe` template. (Use `default.ipxe` and set tag `IPXEMenuEntry=dracut`.)
 
 ## v4.6.0rc2, 2025-02-07
 
