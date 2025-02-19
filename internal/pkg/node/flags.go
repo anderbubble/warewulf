@@ -3,9 +3,11 @@ package node
 import (
 	"net"
 	"reflect"
+	"strconv"
 
 	"github.com/spf13/cobra"
-	"github.com/warewulf/warewulf/internal/pkg/wwtype"
+	"github.com/spf13/pflag"
+	"github.com/warewulf/warewulf/internal/pkg/util"
 )
 
 type NodeConfDel struct {
@@ -25,6 +27,66 @@ type NodeConfAdd struct {
 	DiskName    string            `lopt:"diskname" comment:"set diskdevice name"`
 	PartName    string            `lopt:"partname" comment:"set the partition name so it can be used by a file system"`
 	FsName      string            `lopt:"fsname" comment:"set the file system name which must match a partition name"`
+}
+
+// unsetableBoolValue implements pflag.Value and holds a pointer to a *bool variable.
+type unsetableBoolValue struct {
+	ptr **bool
+}
+
+// newUnsetableBoolValue sets the initial value and returns an unsetableBoolValue.
+func newUnsetableBoolValue(defaultVal *bool, p **bool) *unsetableBoolValue {
+	*p = defaultVal
+	return &unsetableBoolValue{ptr: p}
+}
+
+// Set parses the flag value. Sentinel strings ("nil", "null", "undef") set the pointer to nil.
+// Otherwise, it parses the value as a boolean.
+func (v *unsetableBoolValue) Set(s string) error {
+	if b, err := util.ParseBoolP(s); err != nil {
+		return err
+	} else {
+		*v.ptr = b
+		return nil
+	}
+}
+
+// String returns the string representation of the value.
+func (v *unsetableBoolValue) String() string {
+	if *v.ptr == nil {
+		return "null"
+	}
+	return strconv.FormatBool(**v.ptr)
+}
+
+// Type returns a string describing the flag's type.
+func (v *unsetableBoolValue) Type() string {
+	return "bool"
+}
+
+func (v *unsetableBoolValue) IsBoolFlag() bool {
+	return true
+}
+
+// BoolPVar defines a flag with a pointer to a bool variable that supports nil.
+// It behaves like pflag.BoolVar but accepts a *bool variable where nil means "not set".
+func BoolPVar(fs *pflag.FlagSet, p **bool, name string, value *bool, usage string) {
+	*p = value
+	fs.Var(newUnsetableBoolValue(value, p), name, usage)
+	if fl := fs.Lookup(name); fl != nil {
+		// When the flag is provided without a value, use "true"
+		fl.NoOptDefVal = "true"
+	}
+}
+
+// BoolPVarP is like BoolPVar but accepts a shorthand letter.
+func BoolPVarP(fs *pflag.FlagSet, p **bool, name, shorthand string, value *bool, usage string) {
+	*p = value
+	fs.VarP(newUnsetableBoolValue(value, p), name, shorthand, usage)
+	if fl := fs.Lookup(name); fl != nil {
+		// When the flag is provided without a value, use "true"
+		fl.NoOptDefVal = "true"
+	}
 }
 
 /*
@@ -99,7 +161,6 @@ Helper function to create the different PersistentFlags() for different types.
 */
 func createFlags(baseCmd *cobra.Command,
 	myType reflect.StructField, myVal *reflect.Value) {
-	var wwbool wwtype.WWbool
 	if myType.Tag.Get("lopt") != "" {
 		if myType.Type == reflect.TypeOf("") {
 			ptr := myVal.Addr().Interface().(*string)
@@ -173,19 +234,19 @@ func createFlags(baseCmd *cobra.Command,
 					net.IP{}, // empty default!
 					myType.Tag.Get("comment"))
 			}
-		} else if myType.Type == reflect.TypeOf(wwbool) {
-			ptr := myVal.Addr().Interface().(*wwtype.WWbool)
+		} else if myType.Type.Kind() == reflect.Pointer && myType.Type.Elem().Kind() == reflect.Bool {
+			ptr := myVal.Addr().Interface().(**bool)
 			if myType.Tag.Get("sopt") != "" {
-				baseCmd.PersistentFlags().VarP(ptr,
+				BoolPVarP(baseCmd.PersistentFlags(), ptr,
 					myType.Tag.Get("lopt"),
 					myType.Tag.Get("sopt"),
+					nil,
 					myType.Tag.Get("comment"))
-				baseCmd.Flag(myType.Tag.Get("lopt")).NoOptDefVal = "true"
 			} else {
-				baseCmd.PersistentFlags().Var(ptr,
+				BoolPVar(baseCmd.PersistentFlags(), ptr,
 					myType.Tag.Get("lopt"),
+					nil,
 					myType.Tag.Get("comment"))
-				baseCmd.Flag(myType.Tag.Get("lopt")).NoOptDefVal = "true"
 			}
 		}
 	}

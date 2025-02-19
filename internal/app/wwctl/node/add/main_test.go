@@ -58,7 +58,7 @@ nodes:
 			outDb: `nodeprofiles: {}
 nodes:
   n01:
-    discoverable: "true"
+    discoverable: true
 `},
 		{name: "single node add, discoverable true, implicit",
 			args:    []string{"--discoverable", "n01"},
@@ -67,7 +67,7 @@ nodes:
 			outDb: `nodeprofiles: {}
 nodes:
   n01:
-    discoverable: "true"
+    discoverable: true
 `},
 		{name: "single node add, discoverable wrong argument",
 			args:    []string{"--discoverable=maybe", "n01"},
@@ -83,7 +83,7 @@ nodes: {}
 			outDb: `nodeprofiles: {}
 nodes:
   n01:
-    discoverable: "false"
+    discoverable: false
 `},
 		{name: "single node add with Kernel args",
 			args:    []string{"--kernelargs=foo", "n01"},

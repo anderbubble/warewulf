@@ -14,6 +14,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -616,4 +617,30 @@ func EqualYaml(a interface{}, b interface{}) (bool, error) {
 	}
 
 	return bytes.Equal(aYaml, bYaml), nil
+}
+
+var unsetValues = []string{"unset", "delete", "undef", "--", "nil", "0.0.0.0", ""}
+
+func IsUnset(value string) bool {
+	return InSlice(unsetValues, strings.ToLower(value))
+}
+
+func ParseBool(s string) (bool, error) {
+	switch lower := strings.ToLower(s); lower {
+	case "yes":
+		return true, nil
+	case "no":
+		return false, nil
+	default:
+		return strconv.ParseBool(s)
+	}
+}
+
+func ParseBoolP(s string) (*bool, error) {
+	if IsUnset(s) {
+		return nil, nil
+	} else {
+		b, err := ParseBool(s)
+		return &b, err
+	}
 }

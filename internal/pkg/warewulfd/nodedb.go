@@ -40,7 +40,7 @@ func loadNodeDB() (err error) {
 	}
 
 	for _, n := range nodes {
-		if n.Discoverable.Bool() {
+		if n.Discoverable() {
 			continue
 		}
 		for _, netdev := range n.NetDevs {
@@ -80,7 +80,7 @@ func GetNodeOrSetDiscoverable(hwaddr string) (node.Node, error) {
 	nodeChanges, _ := db.yml.GetNodeOnly(node.Id()) // ignore error as nodeId is in db
 	wwlog.Debug("node: %v", nodeChanges)
 	nodeChanges.NetDevs[netdev].Hwaddr = hwaddr
-	nodeChanges.Discoverable = "UNDEF"
+	nodeChanges.DiscoverableP = nil
 	err = db.yml.SetNode(node.Id(), nodeChanges)
 	if err != nil {
 		return node, err

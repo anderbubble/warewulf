@@ -201,7 +201,7 @@ func (config *NodesYaml) FindDiscoverableNode() (Node, string, error) {
 	nodes, _ := config.FindAllNodes()
 
 	for _, node := range nodes {
-		if !(node.Discoverable.Bool()) {
+		if !(node.Discoverable()) {
 			continue
 		}
 		if _, ok := node.NetDevs[node.PrimaryNetDev]; ok {

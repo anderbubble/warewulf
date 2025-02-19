@@ -366,9 +366,9 @@ nodes:
 			args:    []string{"-a"},
 			wantErr: false,
 			stdout: `
-NODE  FIELD                    PROFILE  VALUE
-----  -----                    -------  -----
-n1    NetDevs[default].OnBoot  --       true
+NODE  FIELD                     PROFILE  VALUE
+----  -----                     -------  -----
+n1    NetDevs[default].OnBootP  --       true
 `,
 			inDb: `nodes:
   n1:
@@ -447,7 +447,7 @@ nodes:
 			stdout: `
 {
   "n01": {
-    "Discoverable": "",
+    "DiscoverableP": null,
     "AssetKey": "",
     "Profiles": [
       "default"
@@ -486,7 +486,7 @@ nodes:
 			stdout: `
 {
   "n01": {
-    "Discoverable": "",
+    "DiscoverableP": null,
     "AssetKey": "",
     "Profiles": [
       "default"
@@ -509,7 +509,7 @@ nodes:
     "Resources": null
   },
   "n02": {
-    "Discoverable": "",
+    "DiscoverableP": null,
     "AssetKey": "",
     "Profiles": [
       "default"

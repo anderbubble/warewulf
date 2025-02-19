@@ -104,7 +104,7 @@ nodes:
 nodes:
   n01:
     ipmi:
-      write: "true"
+      write: true
 `,
 	}
 	run_test(t, test)
@@ -123,7 +123,7 @@ nodes:
 nodes:
   n01:
     ipmi:
-      write: "true"
+      write: true
 `,
 	}
 	run_test(t, test)
@@ -138,7 +138,7 @@ func Test_Unset_Ipmi_Write(t *testing.T) {
 nodes:
   n01:
     ipmi:
-      write: "true"
+      write: true
 `,
 		outDb: `nodeprofiles: {}
 nodes:
@@ -157,7 +157,7 @@ func Test_Unset_Ipmi_Write_False(t *testing.T) {
 nodes:
   n01:
     ipmi:
-      write: "false"
+      write: false
 `,
 		outDb: `nodeprofiles: {}
 nodes:
@@ -175,7 +175,7 @@ func Test_Ipmi_Hidden_False(t *testing.T) {
 		inDB: `nodeprofiles:
   default:
     ipmi:
-      write: "true"
+      write: true
 nodes:
   n01:
     profiles:
@@ -184,13 +184,13 @@ nodes:
 		outDb: `nodeprofiles:
   default:
     ipmi:
-      write: "true"
+      write: true
 nodes:
   n01:
     profiles:
     - default
     ipmi:
-      write: "false"
+      write: false
 `,
 	}
 	run_test(t, test)

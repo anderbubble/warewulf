@@ -2,8 +2,6 @@ package node
 
 import (
 	"net"
-
-	"github.com/warewulf/warewulf/internal/pkg/wwtype"
 )
 
 const undef string = "UNDEF"
@@ -26,9 +24,13 @@ type Node struct {
 	id    string
 	valid bool // Is set true, if called by the constructor
 	// exported values
-	Discoverable wwtype.WWbool     `yaml:"discoverable,omitempty" lopt:"discoverable" sopt:"e" comment:"Make discoverable in given network (true/false)"`
-	AssetKey     string            `yaml:"asset key,omitempty" lopt:"asset" comment:"Set the node's Asset tag (key)"`
-	Profile      `yaml:"-,inline"` // include all values set in the profile, but inline them in yaml output if these are part of Node
+	DiscoverableP *bool             `yaml:"discoverable,omitempty" lopt:"discoverable" sopt:"e" comment:"Make discoverable in given network (true/false)"`
+	AssetKey      string            `yaml:"asset key,omitempty" lopt:"asset" comment:"Set the node's Asset tag (key)"`
+	Profile       `yaml:"-,inline"` // include all values set in the profile, but inline them in yaml output if these are part of Node
+}
+
+func (node *Node) Discoverable() bool {
+	return node.DiscoverableP != nil && *(node.DiscoverableP)
 }
 
 /*
@@ -65,9 +67,13 @@ type IpmiConf struct {
 	Port       string            `yaml:"port,omitempty" lopt:"ipmiport" comment:"Set the IPMI port"`
 	Interface  string            `yaml:"interface,omitempty" lopt:"ipmiinterface" comment:"Set the node's IPMI interface (defaults: 'lan')"`
 	EscapeChar string            `yaml:"escapechar,omitempty" lopt:"ipmiescapechar" comment:"Set the IPMI escape character (defaults: '~')"`
-	Write      wwtype.WWbool     `yaml:"write,omitempty" lopt:"ipmiwrite" comment:"Enable the write of impi configuration (true/false)"`
+	WriteP     *bool             `yaml:"write,omitempty" lopt:"ipmiwrite" comment:"Enable the write of impi configuration (true/false)"`
 	Template   string            `yaml:"template,omitempty" lopt:"ipmitemplate" comment:"template used for ipmi command"`
 	Tags       map[string]string `yaml:"tags,omitempty"`
+}
+
+func (ipmiconf *IpmiConf) Write() bool {
+	return ipmiconf.WriteP != nil && *(ipmiconf.WriteP)
 }
 
 type KernelConf struct {
@@ -77,7 +83,7 @@ type KernelConf struct {
 
 type NetDev struct {
 	Type    string            `yaml:"type,omitempty" lopt:"type" sopt:"T" comment:"Set device type of given network"`
-	OnBoot  wwtype.WWbool     `yaml:"onboot,omitempty" lopt:"onboot" comment:"Enable/disable network device (true/false)"`
+	OnBootP *bool             `yaml:"onboot,omitempty" lopt:"onboot" comment:"Enable/disable network device (true/false)"`
 	Device  string            `yaml:"device,omitempty" lopt:"netdev" sopt:"N" comment:"Set the device for given network"`
 	Hwaddr  string            `yaml:"hwaddr,omitempty" lopt:"hwaddr" sopt:"H" comment:"Set the device's HW address for given network" type:"MAC"`
 	Ipaddr  net.IP            `yaml:"ipaddr,omitempty" comment:"IPv4 address in given network" sopt:"I" lopt:"ipaddr" type:"IP"`
@@ -88,6 +94,10 @@ type NetDev struct {
 	MTU     string            `yaml:"mtu,omitempty" lopt:"mtu" comment:"Set the mtu" type:"uint"`
 	Tags    map[string]string `yaml:"tags,omitempty"`
 	primary bool
+}
+
+func (netdev *NetDev) OnBoot() bool {
+	return netdev.OnBootP == nil || *(netdev.OnBootP)
 }
 
 /*

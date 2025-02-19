@@ -191,7 +191,11 @@ func listReflectedFields(t reflect.Type, v reflect.Value, prefix string) (fields
 		}
 		if fieldType.Kind() == reflect.Pointer {
 			fieldType = fieldType.Elem()
-			fieldValue = fieldValue.Elem()
+			if fieldValue.IsValid() && !fieldValue.IsNil() {
+				fieldValue = fieldValue.Elem()
+			} else {
+				fieldValue = reflect.Zero(fieldType)
+			}
 		}
 		if fieldType.Kind() == reflect.Struct {
 			fields = append(fields, listReflectedFields(fieldType, fieldValue, fmt.Sprintf("%v%v.", prefix, field.Name))...)
@@ -206,8 +210,10 @@ func listReflectedFields(t reflect.Type, v reflect.Value, prefix string) (fields
 				elementValue := fieldValue.MapIndex(key)
 				if elementType.Kind() == reflect.Pointer {
 					elementType = elementType.Elem()
-					if elementValue.IsValid() {
+					if elementValue.IsValid() && !elementValue.IsNil() {
 						elementValue = elementValue.Elem()
+					} else {
+						elementValue = reflect.Zero(elementType)
 					}
 				}
 				if elementType.Kind() == reflect.Struct {

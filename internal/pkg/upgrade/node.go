@@ -181,8 +181,10 @@ func (legacy *Node) Upgrade(addDefaults bool, replaceOverlays bool) (upgraded *n
 	if legacy.Disabled != "" {
 		logIgnore("Disabled", legacy.Disabled, "obsolete")
 	}
-	if legacy.Discoverable != "" {
-		warnError(upgraded.Discoverable.Set(legacy.Discoverable))
+	if discoverable, err := util.ParseBoolP(legacy.Discoverable); err != nil {
+		warnError(err)
+	} else {
+		upgraded.DiscoverableP = discoverable
 	}
 	if legacy.Disks != nil {
 		for name, disk := range legacy.Disks {
@@ -224,8 +226,10 @@ func (legacy *Node) Upgrade(addDefaults bool, replaceOverlays bool) (upgraded *n
 	if upgraded.Ipmi.UserName == "" {
 		upgraded.Ipmi.UserName = legacy.IpmiUserName
 	}
-	if upgraded.Ipmi.Write == "" && legacy.IpmiWrite != "" {
-		warnError(upgraded.Ipmi.Write.Set(legacy.IpmiWrite))
+	if write, err := util.ParseBoolP(legacy.IpmiWrite); err != nil {
+		warnError(err)
+	} else {
+		upgraded.Ipmi.WriteP = write
 	}
 	if legacy.Keys != nil {
 		for key, value := range legacy.Keys {
@@ -441,8 +445,10 @@ func (legacy *Profile) Upgrade(addDefaults bool, replaceOverlays bool) (upgraded
 	if upgraded.Ipmi.UserName == "" {
 		upgraded.Ipmi.UserName = legacy.IpmiUserName
 	}
-	if upgraded.Ipmi.Write == "" && legacy.IpmiWrite != "" {
-		warnError(upgraded.Ipmi.Write.Set(legacy.IpmiWrite))
+	if write, err := util.ParseBoolP(legacy.IpmiWrite); err != nil {
+		warnError(err)
+	} else {
+		upgraded.Ipmi.WriteP = write
 	}
 	if legacy.Keys != nil {
 		for key, value := range legacy.Keys {
@@ -580,8 +586,10 @@ func (legacy *IpmiConf) Upgrade() (upgraded *node.IpmiConf) {
 		delete(upgraded.Tags, tag)
 	}
 	upgraded.UserName = legacy.UserName
-	if legacy.Write != "" {
-		warnError(upgraded.Write.Set(legacy.Write))
+	if write, err := util.ParseBoolP(legacy.Write); err != nil {
+		warnError(err)
+	} else {
+		upgraded.WriteP = write
 	}
 	return
 }
@@ -673,8 +681,10 @@ func (legacy *NetDev) Upgrade(addDefaults bool) (upgraded *node.NetDev) {
 			}
 		}
 	}
-	if legacy.OnBoot != "" {
-		warnError(upgraded.OnBoot.Set(legacy.OnBoot))
+	if onboot, err := util.ParseBoolP(legacy.OnBoot); err != nil {
+		warnError(err)
+	} else {
+		upgraded.OnBootP = onboot
 	}
 	upgraded.Prefix = net.ParseIP(legacy.Prefix)
 	if legacy.Tags != nil {
