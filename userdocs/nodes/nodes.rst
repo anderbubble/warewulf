@@ -215,11 +215,6 @@ file used must be in YAML or CSV format.
 CSV Import
 ----------
 
-.. note::
-   As of Warewulf v4.6.1, the csv import functionality is broken and an 
-   `issue <https://github.com/warewulf/warewulf/issues/1862>`_
-   has been created to track this.
-
 The CSV file must have a header where the first field must always be the nodename, 
 and the rest of the fields are the same as the long commandline options. Network 
 device must have the form ``net.$NETNAME.$NETOPTION``. (e.g., ``net.default.ipaddr``). 
