@@ -1,0 +1,176 @@
+---
+name: release
+
+on:
+  workflow_dispatch: {}
+  push:
+    tags:
+      - 'v*.*.*'
+  schedule:
+    - cron: '05 00 * * *'
+
+permissions:
+  contents: write
+
+jobs:
+  dist:
+    name: Checkout code and build warewulf.spec and dist
+    runs-on: ubuntu-latest
+    outputs:
+      has-recent-commits: ${{ steps.commits.outputs.has-recent-commits }}
+      commits: ${{ steps.commits.outputs.commits }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get commit logs (nightly)
+        if: github.event_name == 'schedule'
+        id: commits
+        shell: bash
+        run: |
+          since=$(date -d '24 hours ago' --iso-8601)
+          if git log --since="$since" --oneline | grep -q .; then
+            HAS_RECENT_COMMITS=true
+            echo "Recent commits found in the last 24 hours"
+          else
+            HAS_RECENT_COMMITS=false
+            echo "No commits found in the last 24 hours"
+            echo "::notice::Skipping nightly release - no commits in last 24 hours"
+          fi
+          echo "HAS_RECENT_COMMITS=${HAS_RECENT_COMMITS}" >>$GITHUB_ENV
+          echo "has-recent-commits=${HAS_RECENT_COMMITS}" >>$GITHUB_OUTPUT
+          echo "commits=`git log $(git describe --tags --abbrev=0)..HEAD --oneline`" >>$GITHUB_OUTPUT
+
+      - name: Build spec and dist
+        run: |
+          make warewulf.spec dist
+
+      - name: Upload spec
+        uses: actions/upload-artifact@v4
+        with:
+          name: warewulf-spec
+          retention-days: 7
+          path: |
+            warewulf.spec
+
+      - name: Upload dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: warewulf-dist
+          retention-days: 7
+          path: |
+            warewulf-*.tar.gz
+
+      - name: Attach dist to release (tagged)
+        if: github.event_name == 'push'
+        uses: xresloader/upload-to-github-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          delete_file: "warewulf-*.tar.gz;warewulf-*.rpm"
+          file: warewulf-*.tar.gz
+          overwrite: true
+          tags: true
+
+      - name: Attach dist to release (nightly)
+        if: github.event_name == 'schedule' && env.HAS_RECENT_COMMITS == 'true'
+        uses: xresloader/upload-to-github-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          delete_file: "warewulf-*.tar.gz;warewulf-*.rpm"
+          file: warewulf-*.tar.gz
+          overwrite: true
+          tag_name: "nightly"
+          prerelease: true
+          draft: false
+          default_release_name: "Warewulf nightly release"
+          update_release_body: |
+            NIGHTLY RELEASE
+
+            Commits since nearest tagged release:
+            ${{ steps.commits.outputs.commits }}
+
+  rpms:
+    needs: dist
+    if: github.event_name != 'schedule' || needs.dist.outputs.has-recent-commits == 'true'
+    name: Build RPMs
+    runs-on: ${{ matrix.runs-on }}
+    container:
+      image: rockylinux/rockylinux:9
+      options: --privileged
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86_64, aarch64]
+        dist: [el9, el8, suse.lp155]
+        include:
+          - dist: el8
+            target: rocky+epel-8
+          - dist: el9
+            target: rocky+epel-9
+          - dist: suse.lp155
+            target: opensuse-leap-15.5
+          - arch: x86_64
+            runs-on: ubuntu-24.04
+          - arch: aarch64
+            runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Prepare mock
+        run: |
+          dnf -y install epel-release
+          dnf -y install rpm-build mock
+          usermod -a -G mock $(whoami)
+          echo "config_opts['print_main_output'] = True" >>/etc/mock/site-defaults.cfg
+
+      - name: Download spec
+        uses: actions/download-artifact@v4
+        with:
+          name: warewulf-spec
+
+      - name: Download dist
+        uses: actions/download-artifact@v4
+        with:
+          name: warewulf-dist
+
+      - name: Build RPMs and run tests
+        run: |
+          root="${{ matrix.target }}-${{ matrix.arch }}"
+          eol_root="/etc/mock/eol/${root}.cfg"
+          if [ -f "${eol_root}" ]
+          then
+            root="${eol_root}"
+          fi
+          mock --root="${root}" --rebuild --spec=warewulf.spec --sources=. \
+          && mock --root="${root}" --chroot -- bash -c "make -C /builddir/build/BUILD/warewulf-*/ test"
+
+      - name: Upload RPMs
+        uses: actions/upload-artifact@v4
+        with:
+          name: warewulf-rpms-${{ matrix.target }}-${{ matrix.arch }}
+          retention-days: 7
+          path: |
+            /var/lib/mock/${{ matrix.target }}-${{ matrix.arch }}/result/warewulf-*.rpm
+
+      - name: Attach RPM and SRPM to release (tagged)
+        if: github.event_name == 'push'
+        uses: xresloader/upload-to-github-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          file: "/var/lib/mock/${{ matrix.target }}-${{ matrix.arch }}/result/warewulf-*.rpm"
+          tags: true
+          overwrite: true
+
+      - name: Attach RPM and SRPM to release (nightly)
+        if: github.event_name == 'schedule' && needs.dist.outputs.has-recent-commits == 'true'
+        uses: xresloader/upload-to-github-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: "nightly"
+          file: "/var/lib/mock/${{ matrix.target }}-${{ matrix.arch }}/result/warewulf-*.rpm"
+          overwrite: true
