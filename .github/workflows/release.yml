@@ -14,13 +14,11 @@ permissions:
 
 jobs:
   dist:
-    name: Checkout code and build warewulf.spec and dist
+    name: Build warewulf.spec and source dist
     runs-on: ubuntu-latest
     outputs:
       has-recent-commits: ${{ steps.commits.outputs.has-recent-commits }}
       commits: ${{ steps.commits.outputs.commits }}
-    env:
-      HAS_RECENT_COMMITS: 'false' # default value
 
     steps:
       - name: Checkout Code
@@ -133,27 +131,34 @@ jobs:
           path: artifacts/
           merge-multiple: true
 
-      - name: Attach artifacts to release (tagged)
-        if: github.event_name == 'push'
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            artifacts/warewulf-*.tar.gz
-            artifacts/warewulf-*.rpm
+      - name: Delete previous release (nightly)
+        if: github.event_name == 'schedule'
+        run: |
+          gh release delete "nightly" --cleanup-tag --yes || echo "No previous nightly release found"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Attach artifacts to release (nightly)
+      - name: Create release (tagged)
+        if: github.event_name != 'schedule'
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            artifacts/*.tar.gz \
+            artifacts/*.rpm \
+            --repo ${{ github.repository }} \
+            --title "${{ github.ref_name }}" \
+            --draft
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create release (nightly)
         if: github.event_name == 'schedule' && needs.dist.outputs.has-recent-commits == 'true'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: "nightly"
-          files: |
-            artifacts/warewulf-*.tar.gz
-            artifacts/warewulf-*.rpm
-          prerelease: true
-          draft: false
-          name: "Warewulf nightly release"
-          body: |
-            NIGHTLY RELEASE
-
-            Commits since nearest tagged release:
-            ${{ needs.dist.outputs.commits }}
+        run: |
+          gh release create ${{ github.ref_name }} \
+            artifacts/*.tar.gz \
+            artifacts/*.rpm \
+            --repo ${{ github.repository }} \
+            --title "nightly" \
+            --notes "NIGHTLY RELEASE\n\nCommits since nearest tagged release:\n${{ needs.dist.outputs.commits }}" \
+            --prerelease
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
