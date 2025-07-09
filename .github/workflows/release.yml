@@ -19,6 +19,8 @@ jobs:
     outputs:
       has-recent-commits: ${{ steps.commits.outputs.has-recent-commits }}
       commits: ${{ steps.commits.outputs.commits }}
+    env:
+      HAS_RECENT_COMMITS: 'false' # default value
 
     steps:
       - name: Checkout Code
@@ -31,18 +33,14 @@ jobs:
         id: commits
         shell: bash
         run: |
-          since=$(date -d '24 hours ago' --iso-8601)
-          if git log --since="$since" --oneline | grep -q .; then
-            HAS_RECENT_COMMITS=true
+          echo "commits=`git log $(git describe --tags --abbrev=0)..HEAD --oneline`" >>$GITHUB_OUTPUT
+          if git log --since="$(date -d '24 hours ago' --iso-8601)" --oneline | grep -q .; then
+            echo "has-recent-commits=true" >>$GITHUB_OUTPUT
             echo "Recent commits found in the last 24 hours"
           else
-            HAS_RECENT_COMMITS=false
+            echo "has-recent-commits=false" >>$GITHUB_OUTPUT
             echo "No commits found in the last 24 hours"
-            echo "::notice::Skipping nightly release - no commits in last 24 hours"
           fi
-          echo "HAS_RECENT_COMMITS=${HAS_RECENT_COMMITS}" >>$GITHUB_ENV
-          echo "has-recent-commits=${HAS_RECENT_COMMITS}" >>$GITHUB_OUTPUT
-          echo "commits=`git log $(git describe --tags --abbrev=0)..HEAD --oneline`" >>$GITHUB_OUTPUT
 
       - name: Build spec and dist
         run: |
@@ -63,36 +61,6 @@ jobs:
           retention-days: 7
           path: |
             warewulf-*.tar.gz
-
-      - name: Attach dist to release (tagged)
-        if: github.event_name == 'push'
-        uses: xresloader/upload-to-github-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          delete_file: "warewulf-*.tar.gz;warewulf-*.rpm"
-          file: warewulf-*.tar.gz
-          overwrite: true
-          tags: true
-
-      - name: Attach dist to release (nightly)
-        if: github.event_name == 'schedule' && env.HAS_RECENT_COMMITS == 'true'
-        uses: xresloader/upload-to-github-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          delete_file: "warewulf-*.tar.gz;warewulf-*.rpm"
-          file: warewulf-*.tar.gz
-          overwrite: true
-          tag_name: "nightly"
-          prerelease: true
-          draft: false
-          default_release_name: "Warewulf nightly release"
-          update_release_body: |
-            NIGHTLY RELEASE
-
-            Commits since nearest tagged release:
-            ${{ steps.commits.outputs.commits }}
 
   rpms:
     needs: dist
@@ -155,22 +123,37 @@ jobs:
           path: |
             /var/lib/mock/${{ matrix.target }}-${{ matrix.arch }}/result/warewulf-*.rpm
 
-      - name: Attach RPM and SRPM to release (tagged)
-        if: github.event_name == 'push'
-        uses: xresloader/upload-to-github-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  release:
+    needs: [dist, rpms]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
         with:
-          file: "/var/lib/mock/${{ matrix.target }}-${{ matrix.arch }}/result/warewulf-*.rpm"
-          tags: true
-          overwrite: true
+          path: artifacts/
+          merge-multiple: true
 
-      - name: Attach RPM and SRPM to release (nightly)
+      - name: Attach artifacts to release (tagged)
+        if: github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/warewulf-*.tar.gz
+            artifacts/warewulf-*.rpm
+
+      - name: Attach artifacts to release (nightly)
         if: github.event_name == 'schedule' && needs.dist.outputs.has-recent-commits == 'true'
-        uses: xresloader/upload-to-github-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: "nightly"
-          file: "/var/lib/mock/${{ matrix.target }}-${{ matrix.arch }}/result/warewulf-*.rpm"
-          overwrite: true
+          files: |
+            artifacts/warewulf-*.tar.gz
+            artifacts/warewulf-*.rpm
+          prerelease: true
+          draft: false
+          name: "Warewulf nightly release"
+          body: |
+            NIGHTLY RELEASE
+
+            Commits since nearest tagged release:
+            ${{ needs.dist.outputs.commits }}
