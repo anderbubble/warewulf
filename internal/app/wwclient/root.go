@@ -155,18 +155,21 @@ func CobraRunE(cmd *cobra.Command, args []string) (err error) {
 	wwlog.Debug("Version: %s", version.Version())
 
 	target := "/"
-	if os.Args[0] == path.Join(conf.Paths.WWClientdir, "wwclient") {
-		wwlog.Warn("updating live file system: cancel now if this is in error")
-		time.Sleep(5000 * time.Millisecond)
-	} else {
-		target = "/warewulf/wwclient-test"
+	// --attest only talks to the TPM and the server.
+	if !attestFlag {
+		if os.Args[0] == path.Join(conf.Paths.WWClientdir, "wwclient") {
+			wwlog.Warn("updating live file system: cancel now if this is in error")
+			time.Sleep(5000 * time.Millisecond)
+		} else {
+			target = "/warewulf/wwclient-test"
 
-		fmt.Printf("Called via: %s\n", os.Args[0])
-		fmt.Printf("Runtime overlay is being put in '%s' rather than '/'\n", target)
-		fmt.Printf("For full functionality call with: %s\n", path.Join(conf.Paths.WWClientdir, "wwclient"))
-		err := os.MkdirAll(target, 0755)
-		if err != nil {
-			return fmt.Errorf("failed to create dir: %w", err)
+			fmt.Printf("Called via: %s\n", os.Args[0])
+			fmt.Printf("Runtime overlay is being put in '%s' rather than '/'\n", target)
+			fmt.Printf("For full functionality call with: %s\n", path.Join(conf.Paths.WWClientdir, "wwclient"))
+			err := os.MkdirAll(target, 0755)
+			if err != nil {
+				return fmt.Errorf("failed to create dir: %w", err)
+			}
 		}
 	}
 
