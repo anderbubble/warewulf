@@ -9,6 +9,7 @@ import (
 
 	warewulfconf "github.com/warewulf/warewulf/internal/pkg/config"
 	"github.com/warewulf/warewulf/internal/pkg/node"
+	"github.com/warewulf/warewulf/internal/pkg/tpm"
 	"github.com/warewulf/warewulf/internal/pkg/wwlog"
 )
 
@@ -77,6 +78,29 @@ func CleanOverlays() error {
 			wwlog.Verbose("removing overlays of deleted node: %s", item.Name())
 			err = os.RemoveAll(cleanTarget)
 			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// CleanTPMState removes the TPM state of deleted nodes.
+func CleanTPMState() error {
+	nodeDB, err := node.New()
+	if err != nil {
+		return err
+	}
+	nodes := nodeDB.ListAllNodes()
+	store := tpm.DefaultStore()
+	stateNodes, err := store.Nodes()
+	if err != nil {
+		return err
+	}
+	for _, n := range stateNodes {
+		if !slices.Contains(nodes, n) {
+			wwlog.Verbose("removing TPM state of deleted node: %s", n)
+			if err := store.Delete(n); err != nil {
 				return err
 			}
 		}

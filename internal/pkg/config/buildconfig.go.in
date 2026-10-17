@@ -106,3 +106,8 @@ func (paths BuildConfig) DistributionOverlaydir() string {
 func (paths BuildConfig) OverlayProvisiondir() string {
 	return path.Join(paths.WWProvisiondir, "overlays")
 }
+
+// TPMStatedir holds per-node TPM enrollment and attestation state.
+func (paths BuildConfig) TPMStatedir() string {
+	return path.Join(paths.Localstatedir, "warewulf", "tpm")
+}

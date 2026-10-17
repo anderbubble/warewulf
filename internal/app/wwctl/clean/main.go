@@ -12,6 +12,8 @@ func CobraRunE(vars *variables) func(cmd *cobra.Command, args []string) (err err
 			return err
 		} else if err = clean.CleanOverlays(); err != nil {
 			return err
+		} else if err = clean.CleanTPMState(); err != nil {
+			return err
 		} else {
 			return nil
 		}

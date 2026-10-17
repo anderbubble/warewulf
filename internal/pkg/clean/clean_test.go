@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/warewulf/warewulf/internal/pkg/testenv"
+	"github.com/warewulf/warewulf/internal/pkg/tpm"
 )
 
 func Test_CleanOverlays(t *testing.T) {
@@ -181,4 +182,21 @@ nodes:
 			}
 		})
 	}
+}
+
+func TestCleanTPMState(t *testing.T) {
+	env := testenv.New(t)
+	defer env.RemoveAll()
+	tpm.ResetDefaultStore()
+	defer tpm.ResetDefaultStore()
+	env.WriteFile("etc/warewulf/nodes.conf", `nodes:
+  node1: {}`)
+
+	store := tpm.DefaultStore()
+	for _, n := range []string{"node1", "deleted"} {
+		assert.NoError(t, store.Update(n, func(*tpm.State) error { return nil }))
+	}
+	assert.NoError(t, CleanTPMState())
+	assert.True(t, store.Exists("node1"))
+	assert.False(t, store.Exists("deleted"))
 }
