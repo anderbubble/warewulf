@@ -65,8 +65,7 @@ func configureRootHandler(apiHandler http.Handler) *slashFix {
 	wwHandler.HandleFunc("/runtime/", warewulfd.HandleRuntimeOverlay)
 	wwHandler.HandleFunc("/status", warewulfd.HandleStatus)
 	wwHandler.HandleFunc("/files/", warewulfd.HandleFiles)
-	wwHandler.HandleFunc("/tpm-quote/", warewulfd.TPMReceive)
-	wwHandler.HandleFunc("/tpm-challenge", warewulfd.TPMChallengeSend)
+	wwHandler.HandleFunc("/tpm/", warewulfd.HandleTPM)
 
 	/* Deprecated */
 	wwHandler.HandleFunc("/container/", warewulfd.HandleImage)

@@ -201,6 +201,12 @@ func appendBounded(list []Secret, e Secret) []Secret {
 	return append(list, e)
 }
 
+// IsCurrent reports whether secret is the node's current secret.
+func (s *State) IsCurrent(secret []byte) bool {
+	return len(secret) > 0 && s.Current != nil &&
+		subtle.ConstantTimeCompare([]byte(HashSecret(secret)), []byte(s.Current.Hash)) == 1
+}
+
 // CheckSecret reports whether secret is the node's current secret or a
 // pending one. A pending secret becomes current, commits the enrollment it was
 // issued with, and is recorded as a successful attestation.

@@ -13,19 +13,14 @@ import (
 	"github.com/warewulf/warewulf/internal/pkg/wwlog"
 )
 
-func sendFile(
+// serveFile sends the open file fd, supporting range and conditional requests.
+func serveFile(
 	w http.ResponseWriter,
 	req *http.Request,
-	filename string,
+	fd *os.File,
 	sendto string) error {
 
-	fd, err := os.Open(filename)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return err
-	}
-	defer func() { _ = fd.Close() }()
-
+	filename := fd.Name()
 	stat, err := fd.Stat()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

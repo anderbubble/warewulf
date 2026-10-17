@@ -5,6 +5,7 @@ import (
 	"strings"
 	"sync"
 
+	warewulfconf "github.com/warewulf/warewulf/internal/pkg/config"
 	"github.com/warewulf/warewulf/internal/pkg/node"
 	"github.com/warewulf/warewulf/internal/pkg/overlay"
 	"github.com/warewulf/warewulf/internal/pkg/wwlog"
@@ -40,7 +41,16 @@ func loadNodeDB() (err error) {
 		return err
 	}
 
+	conf := warewulfconf.Get()
 	for _, n := range nodes {
+		if n.Tpm() {
+			if !conf.Warewulf.TLSEnabled() {
+				wwlog.Error("node %s requires TPM attestation, which requires TLS: its runtime overlay will be refused", n.Id())
+			}
+			if !conf.Warewulf.GrubBoot() {
+				wwlog.Warn("node %s requires TPM attestation, which requires GRUB boot (warewulf:grubboot)", n.Id())
+			}
+		}
 		if n.Discoverable.Bool() {
 			continue
 		}

@@ -113,8 +113,8 @@ func sendResponse(w http.ResponseWriter, req *http.Request, stageFile string, tm
 
 			w.Header().Set("Content-Type", "text")
 			w.Header().Set("Content-Length", strconv.Itoa(buf.Len()))
-			if err := ctx.tpm.Update(stageFile, fmt.Sprintf("%x", sha256.Sum256(buf.Bytes()))); err != nil {
-				wwlog.Warn("couldn't update TPM log for %s: %s", stageFile, err)
+			if measured(ctx) {
+				recordSent(ctx, stageFile, fmt.Sprintf("%x", sha256.Sum256(buf.Bytes())))
 			}
 
 			_, err = buf.WriteTo(w)
@@ -138,38 +138,42 @@ func sendResponse(w http.ResponseWriter, req *http.Request, stageFile string, tm
 				wwlog.Error("unsupported %s compressed version of file %s",
 					ctx.rinfo.compress, stageFile)
 				w.WriteHeader(http.StatusNotFound)
+				return
 			}
-			// Read file content for checksum
-			fileBytes, err := os.ReadFile(stageFile)
+
+			fd, err := os.Open(stageFile)
 			if err != nil {
 				wwlog.ErrorExc(err, "")
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-			if err := ctx.tpm.Update(stageFile, fmt.Sprintf("%x", sha256.Sum256(fileBytes))); err != nil {
-				wwlog.Warn("couldn't update TPM log for %s: %s", stageFile, err)
+			defer func() { _ = fd.Close() }()
+			if measured(ctx) {
+				// Hash the same open file that is served, so the recorded
+				// digest is of exactly the bytes the node receives.
+				digest, err := fileDigests.sum(fd)
+				if err != nil {
+					wwlog.ErrorExc(err, "")
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+				recordSent(ctx, stageFile, digest)
 			}
 
-			err = sendFile(w, req, stageFile, ctx.remoteNode.Id())
+			err = serveFile(w, req, fd, ctx.remoteNode.Id())
 			if err != nil {
 				wwlog.ErrorExc(err, "")
 				return
 			}
 		}
 
-		status := NodeStatus{
+		updateStatus(&NodeStatus{
 			NodeName: ctx.remoteNode.Id(),
 			Stage:    ctx.rinfo.stage,
 			Sent:     path.Base(stageFile),
 			Ipaddr:   ctx.rinfo.ipaddr,
-		}
-		if ctx.rinfo.assetkey != "" {
-			status.Security = "ASSET"
-		}
-		if ctx.rinfo.tpmsecret != "" {
-			status.Security = "TPM"
-		}
-		updateStatus(&status)
+			Security: ctx.security,
+		})
 
 	} else if stageFile == "" {
 		w.WriteHeader(http.StatusBadRequest)

@@ -1,408 +1,320 @@
 package warewulfd
 
 import (
-	"crypto/sha256"
-	"crypto/x509"
-	"encoding/base64"
 	"encoding/json"
-	"fmt"
-	"io"
 	"net/http"
-	"os"
-	"path/filepath"
+	"path"
+	"strings"
 	"time"
 
 	"github.com/google/go-attestation/attest"
-	warewulfconf "github.com/warewulf/warewulf/internal/pkg/config"
-	nodedb "github.com/warewulf/warewulf/internal/pkg/node"
 	"github.com/warewulf/warewulf/internal/pkg/tpm"
-	"github.com/warewulf/warewulf/internal/pkg/util"
 	"github.com/warewulf/warewulf/internal/pkg/wwlog"
 )
 
-// Handler for receiving tpm quote. As nothing is known about
-// the node at this point, we just store what we are getting
-func TPMReceive(w http.ResponseWriter, req *http.Request) {
-	wwlog.Debug("Requested URL: %s", req.URL.String())
+const (
+	// TPMSecretHeader carries a node's runtime secret, hex encoded.
+	TPMSecretHeader = "X-Warewulf-TPM-Secret"
+	// TPMRequiredHeader on a 401 tells the node to attest with its TPM.
+	TPMRequiredHeader = "X-Warewulf-TPM"
 
-	wwidRecv := req.URL.Query().Get("wwid")
-	if wwidRecv == "" {
-		wwlog.Error("TPM receive: wwid parameter missing")
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
+	maxEvidenceBytes = 4 << 20
+)
 
-	// Validate node exists
-	nodes, err := nodedb.New()
-	if err != nil {
-		wwlog.Error("Failed to load node configuration: %s", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	// Check if the node exists by ID, IP or HW address
-	node, err := nodes.GetNodeOnly(wwidRecv)
-	if err != nil {
-		if node, err = nodes.FindByIpaddr(wwidRecv); err != nil {
-			if node, err = nodes.FindByHwaddr(wwidRecv); err != nil {
-				wwlog.Error("Node not found: %s", wwidRecv)
-				w.WriteHeader(http.StatusNotFound)
-				return
-			}
-		}
-	}
-
-	body, err := io.ReadAll(req.Body)
-	if err != nil {
-		wwlog.Error("Failed to read request body: %s", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	var upload tpm.TpmUpload
-	err = json.Unmarshal(body, &upload)
-	if err != nil {
-		wwlog.Error("Failed to unmarshal JSON quote: %s", err)
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	upload.ID = wwidRecv
-
-	tpmStore, err := NewTPMLogStore(node.GetId())
-	if err != nil {
-		wwlog.Error("Failed to access TPM store: %s", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	if err := tpmStore.Save(upload); err != nil {
-		wwlog.Error("Failed to write TPM quote: %s", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	wwlog.Info("Stored TPM quote for node %s (Manufacturer: %s)", upload.ID, upload.GetManufacturer())
-	w.WriteHeader(http.StatusOK)
+// measuredStages are the stages whose files GRUB measures into PCR 9.
+var measuredStages = map[string]bool{
+	"efiboot":   true,
+	"grub":      true,
+	"kernel":    true,
+	"image":     true,
+	"system":    true,
+	"initramfs": true,
 }
 
-// Send the challenge to the node. Challenge itself can only be
-// decrypted by the TPM of the node.
-func TPMChallengeSend(w http.ResponseWriter, req *http.Request) {
-	wwlog.Debug("Requested URL: %s", req.URL.String())
+// generateActivation makes the credential activation challenge. Tests replace
+// it to learn the secret.
+var generateActivation = func(p *attest.ActivationParameters) ([]byte, *attest.EncryptedCredential, error) {
+	return p.Generate()
+}
 
-	wwidRecv := req.URL.Query().Get("wwid")
-	if wwidRecv == "" {
-		wwlog.Error("TPM challenge send: wwid parameter missing")
-		w.WriteHeader(http.StatusBadRequest)
+var nonces = newNonceStore()
+
+// TPMNonceResponse is the body of a successful /tpm/nonce request.
+type TPMNonceResponse struct {
+	Nonce []byte `json:"nonce"`
+	TTL   int    `json:"ttl"`
+}
+
+// TPMQuoteResponse is the body of a /tpm/quote response that issues a
+// credential. For a 409 (the TPM or its baseline changed), Error names the
+// change, and the node confirms it with the decrypted secret at /tpm/confirm.
+type TPMQuoteResponse struct {
+	Credential *attest.EncryptedCredential `json:"credential"`
+	Error      tpm.Code                    `json:"error,omitempty"`
+}
+
+// TPMConfirmResponse is the body of a successful /tpm/confirm request.
+type TPMConfirmResponse struct {
+	// Candidate is the ID of the change recorded for approval.
+	Candidate string `json:"candidate"`
+}
+
+// TPMErrorResponse is the body of a rejected TPM request.
+type TPMErrorResponse struct {
+	Error tpm.Code `json:"error"`
+}
+
+// HandleTPM serves /tpm/nonce/{wwid}, /tpm/quote/{wwid} and
+// /tpm/confirm/{wwid}.
+//
+// A node requests a nonce and posts evidence quoted over it. If the evidence
+// verifies, the response is a credential only its TPM can decrypt. The node
+// uses the secret inside at /runtime/, or, if its TPM or baseline changed (a
+// 409), presents it at /tpm/confirm to have the change recorded for approval.
+func HandleTPM(w http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-
-	nodes, err := nodedb.New()
+	ctx, err := initHandleRequest(w, req)
 	if err != nil {
-		wwlog.Error("Failed to load node configuration: %s", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		return // response already written
 	}
-	node, err := nodes.GetNodeOnly(wwidRecv)
-	if err != nil {
-		if node, err = nodes.FindByIpaddr(wwidRecv); err != nil {
-			if node, err = nodes.FindByHwaddr(wwidRecv); err != nil {
-				wwlog.Error("Node not found: %s", wwidRecv)
-				w.WriteHeader(http.StatusNotFound)
-				return
-			}
-		}
-	}
-
-	conf := warewulfconf.Get()
-	tpmPath := filepath.Join(conf.Paths.OverlayProvisiondir(), node.GetId(), "tpm.json")
-
-	if !util.IsFile(tpmPath) {
-		wwlog.Error("No TPM quote found for node %s", node.GetId())
+	id := ctx.remoteNode.Id()
+	if !ctx.remoteNode.Valid() || !ctx.remoteNode.Tpm() {
+		wwlog.Denied("TPM request for %s, which does not use TPM", ctx.rinfo.hwaddr)
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-
-	data, err := os.ReadFile(tpmPath)
-	if err != nil {
-		wwlog.Error("Failed to read TPM quote: %s", err)
-		w.WriteHeader(http.StatusInternalServerError)
+	if req.TLS == nil {
+		wwlog.Denied("TPM request from %s over plain HTTP", id)
+		w.WriteHeader(http.StatusForbidden)
 		return
 	}
 
-	var existingQuote tpm.Quote
-	err = json.Unmarshal(data, &existingQuote)
-	if err != nil {
-		wwlog.Error("Failed to unmarshal TPM quote: %s", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	if err := existingQuote.Verify(); err != nil {
-		wwlog.Error("Failed to verify TPM quote: %s", err)
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	if err := existingQuote.VerifyEventLog(); err != nil {
-		wwlog.Error("Failed to reply TPM log: %s", err)
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	if err := existingQuote.VerifyGrubBinary(); err != nil {
-		wwlog.Error("grub events on server do no match events in TPM: %s", err)
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-
-	ekPubBytes, err := base64.StdEncoding.DecodeString(existingQuote.Current.EKPub)
-	if err != nil {
-		wwlog.Error("Failed to decode EKPub for node %s: %s", node.GetId(), err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	akPubBytes, err := base64.StdEncoding.DecodeString(existingQuote.Current.AKPub)
-	if err != nil {
-		wwlog.Error("Failed to decode AKPub for node %s: %s", node.GetId(), err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	ekPub, err := x509.ParsePKIXPublicKey(ekPubBytes)
-	if err != nil {
-		wwlog.Error("Failed to parse EK public key for node %s: %s", node.GetId(), err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	var createData []byte
-	var createAttestation []byte
-	var createSignature []byte
-	if existingQuote.Current.CreateData != "" {
-		createData, err = base64.StdEncoding.DecodeString(existingQuote.Current.CreateData)
+	switch ctx.rinfo.stage {
+	case "tpm-nonce":
+		nonce, err := nonces.issue(id, time.Now())
 		if err != nil {
-			wwlog.Error("Failed to decode CreateData for node %s: %s", node.GetId(), err)
+			wwlog.ErrorExc(err, "TPM nonce for "+id)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
+		writeJSON(w, http.StatusOK, TPMNonceResponse{Nonce: nonce, TTL: int(nonceTTL / time.Second)})
+	case "tpm-quote":
+		handleTPMQuote(w, req, ctx)
+	case "tpm-confirm":
+		handleTPMConfirm(w, ctx)
+	default:
+		w.WriteHeader(http.StatusNotFound)
 	}
+}
 
-	if existingQuote.Current.CreateAttestation != "" {
-		createAttestation, err = base64.StdEncoding.DecodeString(existingQuote.Current.CreateAttestation)
-		if err != nil {
-			wwlog.Error("Failed to decode CreateAttestation for node %s: %s", node.GetId(), err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-	}
+func handleTPMQuote(w http.ResponseWriter, req *http.Request, ctx *requestContext) {
+	id := ctx.remoteNode.Id()
+	now := time.Now()
 
-	if existingQuote.Current.CreateSignature != "" {
-		createSignature, err = base64.StdEncoding.DecodeString(existingQuote.Current.CreateSignature)
-		if err != nil {
-			wwlog.Error("Failed to decode CreateSignature for node %s: %s", node.GetId(), err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-	}
-
-	akAttestParams := attest.AttestationParameters{
-		Public:            akPubBytes,
-		CreateData:        createData,
-		CreateAttestation: createAttestation,
-		CreateSignature:   createSignature,
-	}
-
-	activationParams := attest.ActivationParameters{
-		EK: ekPub,
-		AK: akAttestParams,
-	}
-
-	secret, encryptedCredential, err := activationParams.Generate()
-	if err != nil {
-		wwlog.Error("Error generating Credential Activation Challenge for node %s: %s", node.GetId(), err)
-		w.WriteHeader(http.StatusInternalServerError)
+	var ev tpm.Evidence
+	if err := json.NewDecoder(http.MaxBytesReader(w, req.Body, maxEvidenceBytes)).Decode(&ev); err != nil {
+		wwlog.Denied("TPM evidence from %s: %s", id, err)
+		writeJSON(w, http.StatusBadRequest, TPMErrorResponse{Error: tpm.CodeBadEvidence})
 		return
 	}
-	wwlog.Debug("secret %s: %x", node.GetId(), secret)
-
-	newChallenge := tpm.Challenge{
-		EncryptedCredential: *encryptedCredential,
-		Secret:              secret,
-		ID:                  node.GetId(),
-	}
-
-	tpmStore, err := NewTPMLogStore(node.GetId())
-	if err != nil {
-		wwlog.Error("Failed to access TPM store: %s", err)
-		w.WriteHeader(http.StatusInternalServerError)
+	if !nonces.consume(id, ev.Nonce, now) {
+		wwlog.Denied("TPM evidence from %s: unknown, used or expired nonce", id)
+		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
-	if err := tpmStore.SaveChallenge(newChallenge); err != nil {
-		wwlog.Error("Failed to write TPM challenge: %s", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(newChallenge.EncryptedCredential); err != nil {
-		wwlog.Error("Failed to send TPM challenge: %s", err)
-		return
-	}
-
-	wwlog.Info("Sent TPM challenge for node %s", node.GetId())
-}
-
-type TPMLogStore struct {
-	path string
-}
-
-func NewTPMLogStore(nodeId string) (*TPMLogStore, error) {
-	conf := warewulfconf.Get()
-	path := filepath.Join(conf.Paths.OverlayProvisiondir(), nodeId, "tpm.json")
-
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		return nil, err
-	}
-
-	if !util.IsFile(path) {
-		out, err := json.MarshalIndent(tpm.Quote{Modified: time.Now()}, "", "  ")
+	var credential *attest.EncryptedCredential
+	err := tpm.DefaultStore().Update(id, func(st *tpm.State) error {
+		sent := st.SentFiles()
+		v, err := tpm.VerifyEvidence(&ev, ev.Nonce, sent)
 		if err != nil {
-			return nil, err
+			st.Record(err, now)
+			return err
 		}
-		if err := os.WriteFile(path, out, 0644); err != nil {
-			return nil, err
-		}
-	}
-
-	return &TPMLogStore{
-		path: path,
-	}, nil
-}
-
-func (s *TPMLogStore) Save(upload tpm.TpmUpload) error {
-	data, err := os.ReadFile(s.path)
-	if err != nil {
-		return fmt.Errorf("couldn't access storage for quote: %s", err)
-	}
-	var quote tpm.Quote
-	_ = json.Unmarshal(data, &quote)
-
-	if !quote.Current.HasQuote() {
-		quote.Current = upload.TpmData
-	} else if !quote.Current.Equal(&upload.TpmData) {
-		wwlog.Info("TPM quote changed for node %s: different PCRs: %v", upload.ID, quote.Current.Diff(&upload.TpmData))
-		quote.New = upload.TpmData
-	} else {
-		quote.Current = upload.TpmData
-	}
-	quote.EventLog = upload.EventLog
-	quote.ID = upload.ID
-	quote.Modified = time.Now()
-
-	out, err := json.MarshalIndent(quote, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	return os.WriteFile(s.path, out, 0644)
-}
-
-func (s *TPMLogStore) SaveChallenge(challenge tpm.Challenge) error {
-	data, err := os.ReadFile(s.path)
-	if err != nil {
-		return fmt.Errorf("couldn't access storage for challenge: %s", err)
-	}
-	var quote tpm.Quote
-	if err := json.Unmarshal(data, &quote); err != nil {
-		return err
-	}
-	quote.Challenge = &challenge
-	quote.Modified = time.Now()
-
-	out, err := json.MarshalIndent(quote, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	return os.WriteFile(s.path, out, 0644)
-}
-
-func (s *TPMLogStore) SetFilename(filename string) {
-	s.path = filename
-}
-
-func (s *TPMLogStore) ClearLogs() error {
-	if !util.IsFile(s.path) {
-		return nil
-	}
-	data, err := os.ReadFile(s.path)
-	if err != nil {
-		return err
-	}
-	var quote tpm.Quote
-	err = json.Unmarshal(data, &quote)
-	if err != nil {
-		return err
-	}
-	quote.SentLog = []tpm.FileLog{}
-	quote.Modified = time.Now()
-	out, err := json.MarshalIndent(quote, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(s.path, out, 0644)
-}
-
-func (s *TPMLogStore) Update(filename, checksum string) error {
-	if checksum == "" {
-		fileBytes, err := os.ReadFile(filename)
+		enroll, candidate, evalErr := st.Evaluate(&ev, v, now)
+		secret, ec, err := generateActivation(&attest.ActivationParameters{EK: v.EKPub, AK: ev.AK.Attestation()})
 		if err != nil {
-			return fmt.Errorf("couldn't access file for quote: %s", err)
+			err = &tpm.Error{Code: tpm.CodeQuoteInvalid, Err: err}
+			st.Record(err, now)
+			return err
 		}
-		sum := sha256.Sum256(fileBytes)
-		checksum = fmt.Sprintf("%x", sum)
-	}
-	data, err := os.ReadFile(s.path)
-	if err != nil {
-		return fmt.Errorf("couldn't access storage for quote: %s", err)
-	}
-	quote := tpm.Quote{}
-	err = json.Unmarshal(data, &quote)
-	if err != nil {
-		return err
-	}
-
-	for _, entry := range quote.SentLog {
-		if entry.Filename == filename && entry.Checksum == checksum {
-			return nil
+		credential = ec
+		// Nothing is recorded until the node proves it holds the TPM; see
+		// tpm.State.Evaluate.
+		if candidate != nil {
+			st.AddConfirmation(secret, candidate, now)
+		} else {
+			st.AddPending(secret, &ev, v, sent, enroll, now)
 		}
-	}
-
-	quote.SentLog = append(quote.SentLog, tpm.FileLog{
-		Filename: filename,
-		Checksum: checksum,
+		return evalErr
 	})
-	quote.Modified = time.Now()
 
-	out, err := json.MarshalIndent(quote, "", "  ")
-	if err != nil {
-		return err
+	status := NodeStatus{NodeName: id, Stage: ctx.rinfo.stage, Ipaddr: ctx.rinfo.ipaddr}
+	code := tpm.CodeOf(err)
+	switch {
+	case err == nil:
+		wwlog.Info("TPM attestation for %s verified; issued a credential", id)
+		writeJSON(w, http.StatusOK, TPMQuoteResponse{Credential: credential})
+	case code == "":
+		wwlog.ErrorExc(err, "TPM attestation for "+id)
+		w.WriteHeader(http.StatusInternalServerError)
+	case credential != nil:
+		// The TPM or its baseline changed. The node must prove it holds the
+		// TPM before the change is recorded.
+		wwlog.Denied("TPM attestation for %s refused: %s; awaiting confirmation from the node", id, err)
+		writeJSON(w, http.StatusConflict, TPMQuoteResponse{Credential: credential, Error: code})
+	default:
+		wwlog.Denied("TPM attestation for %s failed: %s", id, err)
+		status.Sent, status.Security = strings.ToUpper(string(code)), "TPM-FAIL"
+		updateStatus(&status)
+		writeJSON(w, tpmHTTPStatus(code), TPMErrorResponse{Error: code})
 	}
-
-	return os.WriteFile(s.path, out, 0644)
 }
 
-func (s *TPMLogStore) GetSecret() string {
-	if !util.IsFile(s.path) {
-		return ""
-	}
-	data, err := os.ReadFile(s.path)
+// handleTPMConfirm records a TPM change as a candidate for approval when the
+// node presents the secret issued for it.
+func handleTPMConfirm(w http.ResponseWriter, ctx *requestContext) {
+	id := ctx.remoteNode.Id()
+	store := tpm.DefaultStore()
+	st, err := store.Load(id)
 	if err != nil {
-		return ""
+		wwlog.ErrorExc(err, "confirming TPM change for "+id)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
-	var quote tpm.Quote
-	err = json.Unmarshal(data, &quote)
+	var candidate *tpm.Candidate
+	if st.HasPendingCandidate() {
+		err = store.Update(id, func(st *tpm.State) error {
+			candidate, _ = st.ConfirmCandidate(ctx.rinfo.tpmSecret, time.Now())
+			return nil
+		})
+		if err != nil {
+			wwlog.ErrorExc(err, "confirming TPM change for "+id)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+	if candidate == nil {
+		wwlog.Denied("TPM change confirmation for %s without a matching secret", id)
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	cid := candidate.ID()
+	wwlog.Warn("TPM change on %s (%s) recorded as candidate %s; if expected: wwctl node tpm approve %s --candidate %s",
+		id, candidate.Reason, cid, id, cid)
+	updateStatus(&NodeStatus{NodeName: id, Stage: ctx.rinfo.stage, Ipaddr: ctx.rinfo.ipaddr, Sent: "CANDIDATE", Security: "TPM-FAIL"})
+	writeJSON(w, http.StatusOK, TPMConfirmResponse{Candidate: cid})
+}
+
+func tpmHTTPStatus(code tpm.Code) int {
+	switch code {
+	case tpm.CodeBadEvidence:
+		return http.StatusBadRequest
+	case tpm.CodeEKChanged, tpm.CodeBaselineChanged:
+		return http.StatusConflict
+	default:
+		return http.StatusForbidden
+	}
+}
+
+// tpmAuthorized checks a TPM node's runtime secret. Without TLS it refuses
+// outright; otherwise a missing or wrong secret gets a 401 with
+// TPMRequiredHeader, which tells the node to attest and retry.
+func tpmAuthorized(w http.ResponseWriter, req *http.Request, ctx *requestContext) bool {
+	id := ctx.remoteNode.Id()
+	status := NodeStatus{NodeName: id, Stage: ctx.rinfo.stage, Ipaddr: ctx.rinfo.ipaddr}
+	if req.TLS == nil {
+		wwlog.Denied("%s requires TPM attestation, which requires TLS", id)
+		w.WriteHeader(http.StatusForbidden)
+		status.Sent, status.Security = "TPM_NEEDS_TLS", "TPM-FAIL"
+		updateStatus(&status)
+		return false
+	}
+	ok, err := checkTPMSecret(id, ctx.rinfo.tpmSecret, time.Now())
 	if err != nil {
-		return ""
+		wwlog.ErrorExc(err, "checking TPM secret for "+id)
+		w.WriteHeader(http.StatusInternalServerError)
+		return false
 	}
-	return string(quote.Challenge.Secret)
+	if !ok {
+		wwlog.Verbose("%s has no valid TPM secret; requesting attestation", id)
+		w.Header().Set(TPMRequiredHeader, "required")
+		w.WriteHeader(http.StatusUnauthorized)
+		status.Sent = "TPM_REQUIRED"
+		updateStatus(&status)
+		return false
+	}
+	ctx.security = "TPM"
+	return true
+}
+
+// checkTPMSecret reports whether secret is node's current or a pending
+// secret. The state file is written only when a pending secret is promoted.
+func checkTPMSecret(node string, secret []byte, now time.Time) (bool, error) {
+	store := tpm.DefaultStore()
+	st, err := store.Load(node)
+	if err != nil {
+		return false, err
+	}
+	if st.IsCurrent(secret) {
+		return true, nil
+	}
+	if len(st.Pending) == 0 {
+		return false, nil
+	}
+	ok := false
+	err = store.Update(node, func(st *tpm.State) error {
+		ok = st.CheckSecret(secret, now)
+		return nil
+	})
+	return ok, err
+}
+
+// startTPMBoot begins a new boot session for a TPM node when it fetches its
+// GRUB configuration, and records the grub.cfg served over TFTP, which GRUB
+// measures before the one it fetches from this server.
+func startTPMBoot(ctx *requestContext) {
+	if !ctx.remoteNode.Tpm() {
+		return
+	}
+	tftpCfg := path.Join(ctx.conf.TFTP.TftpRoot, "warewulf/grub.cfg")
+	digest, digestErr := fileDigests.sumPath(tftpCfg)
+	err := tpm.DefaultStore().Update(ctx.remoteNode.Id(), func(st *tpm.State) error {
+		st.StartBoot(time.Now())
+		if digestErr == nil {
+			st.RecordSent(tpm.SentFile{Path: tftpCfg, Stage: "grub", Digest: digest})
+		}
+		return nil
+	})
+	if err != nil {
+		wwlog.Warn("starting TPM boot session for %s: %s", ctx.remoteNode.Id(), err)
+	}
+}
+
+// recordSent remembers a file sent to a TPM node, so its measurement is
+// recognized when the node attests.
+func recordSent(ctx *requestContext, stageFile, digest string) {
+	err := tpm.DefaultStore().Update(ctx.remoteNode.Id(), func(st *tpm.State) error {
+		st.RecordSent(tpm.SentFile{Path: stageFile, Stage: ctx.rinfo.stage, Digest: digest})
+		return nil
+	})
+	if err != nil {
+		wwlog.Warn("recording %s sent to %s: %s", stageFile, ctx.remoteNode.Id(), err)
+	}
+}
+
+// measured reports whether files sent for ctx are recorded for attestation.
+func measured(ctx *requestContext) bool {
+	return ctx.remoteNode.Tpm() && measuredStages[ctx.rinfo.stage]
+}
+
+func writeJSON(w http.ResponseWriter, code int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		wwlog.ErrorExc(err, "writing response")
+	}
 }

@@ -163,11 +163,6 @@ func (fs *FileSystem) WipeFileSystem() bool {
 	return util.BoolP(fs.WipeFileSystemP)
 }
 
-// return node id
-func (n *Node) GetId() string {
-	return n.id
-}
-
 // Tpm reports whether the node requires TPM attestation.
 func (n *Node) Tpm() bool {
 	return util.BoolP(n.TpmP)

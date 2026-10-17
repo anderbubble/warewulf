@@ -1,6 +1,7 @@
 package warewulfd
 
 import (
+	"encoding/hex"
 	"fmt"
 	"net/http"
 	"net/netip"
@@ -10,6 +11,7 @@ import (
 	warewulfconf "github.com/warewulf/warewulf/internal/pkg/config"
 	"github.com/warewulf/warewulf/internal/pkg/node"
 	"github.com/warewulf/warewulf/internal/pkg/wwlog"
+	"github.com/warewulf/warewulf/internal/pkg/wwurl"
 )
 
 // requestContext holds the validated results of the parsed request
@@ -17,14 +19,15 @@ type requestContext struct {
 	conf       *warewulfconf.WarewulfYaml
 	rinfo      parsedRequest
 	remoteNode node.Node
-	tpm        *TPMLogStore
+	// security records what authenticated the request, for node status.
+	security string
 }
 
 // initHandleRequest performs common initial request parsing, security checks,
 // node lookup, and asset key validation. On error, it writes the HTTP error
 // response and returns a non-nil error so the caller can simply return.
 func initHandleRequest(w http.ResponseWriter, req *http.Request) (*requestContext, error) {
-	wwlog.Debug("Requested URL: %s", req.URL.String())
+	wwlog.Debug("Requested URL: %s", wwurl.SanitizeURL(req.URL.String()))
 	conf := warewulfconf.Get()
 	rinfo, err := parseRequest(req)
 	if err != nil {
@@ -37,7 +40,7 @@ func initHandleRequest(w http.ResponseWriter, req *http.Request) (*requestContex
 
 	wwlog.Info("request from hwaddr:%s ipaddr:%s | stage:%s", rinfo.hwaddr, req.RemoteAddr, rinfo.stage)
 
-	if rinfo.stage == "runtime" && conf.Warewulf.Secure() {
+	if (rinfo.stage == "runtime" || strings.HasPrefix(rinfo.stage, "tpm-")) && conf.Warewulf.Secure() {
 		if rinfo.remoteport >= 1024 {
 			wwlog.Denied("Non-privileged port: %s", req.RemoteAddr)
 			w.WriteHeader(http.StatusUnauthorized)
@@ -52,10 +55,6 @@ func initHandleRequest(w http.ResponseWriter, req *http.Request) (*requestContex
 		return nil, err
 	}
 
-	tpm, err := NewTPMLogStore(remoteNode.Id())
-	if err != nil {
-		wwlog.Warn("couldn't create tpm log for node: %s", remoteNode.Id())
-	}
 	if remoteNode.AssetKey != "" && remoteNode.AssetKey != rinfo.assetkey {
 		w.WriteHeader(http.StatusUnauthorized)
 		wwlog.Denied("incorrect asset key for node %s:", remoteNode.Id())
@@ -68,12 +67,15 @@ func initHandleRequest(w http.ResponseWriter, req *http.Request) (*requestContex
 		return nil, fmt.Errorf("incorrect asset key")
 	}
 
-	return &requestContext{
+	ctx := &requestContext{
 		conf:       conf,
 		rinfo:      rinfo,
 		remoteNode: remoteNode,
-		tpm:        tpm,
-	}, nil
+	}
+	if remoteNode.AssetKey != "" {
+		ctx.security = "ASSET"
+	}
+	return ctx, nil
 }
 
 type parsedRequest struct {
@@ -81,7 +83,7 @@ type parsedRequest struct {
 	ipaddr     string
 	remoteport int
 	assetkey   string
-	tpmsecret  string
+	tpmSecret  []byte
 	uuid       string
 	stage      string
 	efifile    string
@@ -136,6 +138,12 @@ func parseRequest(req *http.Request) (parsedRequest, error) {
 		if ret.stage == "efiboot" {
 			// /efiboot/{file}: no wwid in path; identified via ARP
 			ret.efifile = strings.Join(path_parts[2:], "/")
+		} else if ret.stage == "tpm" {
+			// /tpm/{op}[/wwid]
+			ret.stage = "tpm-" + path_parts[2]
+			if len(path_parts) > 3 {
+				ret.hwaddr = parseHwaddr(path_parts[3])
+			}
 		} else {
 			ret.hwaddr = parseHwaddr(path_parts[2])
 		}
@@ -170,8 +178,12 @@ func parseRequest(req *http.Request) (parsedRequest, error) {
 	if len(req.URL.Query()["assetkey"]) > 0 {
 		ret.assetkey = req.URL.Query()["assetkey"][0]
 	}
-	if len(req.URL.Query()["tpmsecret"]) > 0 {
-		ret.tpmsecret = req.URL.Query()["tpmsecret"][0]
+	if h := req.Header.Get(TPMSecretHeader); h != "" {
+		secret, err := hex.DecodeString(h)
+		if err != nil {
+			return ret, errors.New("malformed " + TPMSecretHeader + " header")
+		}
+		ret.tpmSecret = secret
 	}
 	if len(req.URL.Query()["uuid"]) > 0 {
 		ret.uuid = req.URL.Query()["uuid"][0]
