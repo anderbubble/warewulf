@@ -67,3 +67,18 @@ func TestParseTPMFromCmdline(t *testing.T) {
 		})
 	}
 }
+
+func TestWWIDFlag(t *testing.T) {
+	savedWWID, savedConf := wwid, WarewulfConfArg
+	defer func() { wwid, WarewulfConfArg = savedWWID, savedConf }()
+
+	if err := rootCmd.PersistentFlags().Set("wwid", "00:11:22:33:44:55"); err != nil {
+		t.Fatal(err)
+	}
+	if wwid != "00:11:22:33:44:55" {
+		t.Errorf("--wwid set wwid = %q", wwid)
+	}
+	if WarewulfConfArg != savedConf {
+		t.Errorf("--wwid changed WarewulfConfArg to %q", WarewulfConfArg)
+	}
+}

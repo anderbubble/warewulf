@@ -67,7 +67,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&PIDFile, "pidfile", "p", "/var/run/wwclient.pid", "PIDFile to use")
 	rootCmd.PersistentFlags().StringVar(&WarewulfConfArg, "warewulfconf", "", "Set the warewulf configuration file")
 	rootCmd.AddCommand(overlaydiff.GetCommand())
-	rootCmd.PersistentFlags().StringVar(&WarewulfConfArg, "wwid", "", "Set wwid flag manually")
+	rootCmd.PersistentFlags().StringVar(&wwid, "wwid", "", "Set wwid flag manually")
 	rootCmd.PersistentFlags().BoolVar(&uploadQuoteFlag, "upload-quote", false, "Upload TPM quote to the server")
 	rootCmd.PersistentFlags().BoolVar(&getChallengeFlag, "get-challenge", false, "Retrieve and decrypt TPM challenge from the server")
 }
@@ -279,6 +279,22 @@ func CobraRunE(cmd *cobra.Command, args []string) (err error) {
 	defer cleanUp()
 
 	wwlog.Debug("Version: %s", version.Version())
+
+	target := "/"
+	if os.Args[0] == path.Join(conf.Paths.WWClientdir, "wwclient") {
+		wwlog.Warn("updating live file system: cancel now if this is in error")
+		time.Sleep(5000 * time.Millisecond)
+	} else {
+		target = "/warewulf/wwclient-test"
+
+		fmt.Printf("Called via: %s\n", os.Args[0])
+		fmt.Printf("Runtime overlay is being put in '%s' rather than '/'\n", target)
+		fmt.Printf("For full functionality call with: %s\n", path.Join(conf.Paths.WWClientdir, "wwclient"))
+		err := os.MkdirAll(target, 0755)
+		if err != nil {
+			return fmt.Errorf("failed to create dir: %w", err)
+		}
+	}
 
 	localTCPAddr := net.TCPAddr{}
 	if conf.WWClient != nil && conf.WWClient.Port > 0 {
@@ -498,21 +514,6 @@ func CobraRunE(cmd *cobra.Command, args []string) (err error) {
 	finishedInitialSync := false
 
 	for {
-		target := "/"
-		if os.Args[0] == path.Join(conf.Paths.WWClientdir, "wwclient") {
-			wwlog.Warn("updating live file system: cancel now if this is in error")
-			time.Sleep(5000 * time.Millisecond)
-		} else {
-			target = "/warewulf/wwclient-test"
-
-			fmt.Printf("Called via: %s\n", os.Args[0])
-			fmt.Printf("Runtime overlay is being put in '%s' rather than '/'\n", target)
-			fmt.Printf("For full functionality call with: %s\n", path.Join(conf.Paths.WWClientdir, "wwclient"))
-			err := os.MkdirAll(target, 0755)
-			if err != nil {
-				return fmt.Errorf("failed to create dir: %w", err)
-			}
-		}
 		if err := updateSystem(updateOptions{
 			target:    target,
 			ipaddr:    ipaddr,
