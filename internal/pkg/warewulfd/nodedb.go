@@ -6,8 +6,10 @@ import (
 	"sync"
 
 	warewulfconf "github.com/warewulf/warewulf/internal/pkg/config"
+	"github.com/warewulf/warewulf/internal/pkg/hostlist"
 	"github.com/warewulf/warewulf/internal/pkg/node"
 	"github.com/warewulf/warewulf/internal/pkg/overlay"
+	"github.com/warewulf/warewulf/internal/pkg/tpm"
 	"github.com/warewulf/warewulf/internal/pkg/wwlog"
 )
 
@@ -41,15 +43,10 @@ func loadNodeDB() (err error) {
 		return err
 	}
 
-	conf := warewulfconf.Get()
+	var tpmNodes []string
 	for _, n := range nodes {
 		if n.Tpm() {
-			if !conf.Warewulf.TLSEnabled() {
-				wwlog.Error("node %s requires TPM attestation, which requires TLS: its runtime overlay will be refused", n.Id())
-			}
-			if !conf.Warewulf.GrubBoot() {
-				wwlog.Warn("node %s requires TPM attestation, which requires GRUB boot (warewulf:grubboot)", n.Id())
-			}
+			tpmNodes = append(tpmNodes, n.Id())
 		}
 		if n.Discoverable.Bool() {
 			continue
@@ -61,6 +58,15 @@ func loadNodeDB() (err error) {
 	}
 
 	db.NodeInfo = TmpMap
+	if len(tpmNodes) > 0 {
+		for _, problem := range tpm.ServerProblems(warewulfconf.Get()) {
+			if problem.Fatal {
+				wwlog.Error("%s: %s", problem.Message, hostlist.Compress(tpmNodes))
+			} else {
+				wwlog.Warn("%s: %s", problem.Message, hostlist.Compress(tpmNodes))
+			}
+		}
+	}
 	return nil
 }
 

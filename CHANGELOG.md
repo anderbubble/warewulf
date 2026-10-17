@@ -23,6 +23,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - `wwctl clean` removes the TPM state of deleted nodes.
 - `wwclient --wwid` sets the node's wwid when the kernel command line doesn't
   provide one.
+- `wwctl check` reports configuration problems that keep nodes from working as
+  configured. It currently checks the server settings TPM attestation needs and
+  lists TPM changes awaiting approval, and exits non-zero on errors.
 - `wwctl node set` and `wwctl profile set` now display a per-field
   before/after diff of the changes they are about to apply before prompting
   for confirmation. Nodes (or profiles) receiving identical changes are

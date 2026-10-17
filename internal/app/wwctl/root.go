@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/warewulf/warewulf/internal/app/wwctl/check"
 	"github.com/warewulf/warewulf/internal/app/wwctl/clean"
 	"github.com/warewulf/warewulf/internal/app/wwctl/configure"
 	"github.com/warewulf/warewulf/internal/app/wwctl/genconf"
@@ -63,6 +64,7 @@ func init() {
 	rootCmd.AddCommand(ssh.GetCommand())
 	rootCmd.AddCommand(genconf.GetCommand())
 	rootCmd.AddCommand(clean.GetCommand())
+	rootCmd.AddCommand(check.GetCommand())
 	rootCmd.AddCommand(upgrade.GetCommand())
 }
 

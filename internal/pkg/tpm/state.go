@@ -347,15 +347,23 @@ func (s *State) SecretStatus() string {
 	}
 }
 
-// ServerWarnings returns what in the server configuration would keep TPM
+// Problem is something in the server configuration that keeps TPM
 // attestation from working.
-func ServerWarnings(conf *warewulfconf.WarewulfYaml) []string {
-	var warnings []string
+type Problem struct {
+	// Fatal problems stop TPM nodes from getting their runtime overlay.
+	Fatal   bool
+	Message string
+}
+
+// ServerProblems returns what in the server configuration would keep TPM
+// attestation from working.
+func ServerProblems(conf *warewulfconf.WarewulfYaml) []Problem {
+	var problems []Problem
 	if !conf.Warewulf.TLSEnabled() {
-		warnings = append(warnings, "TPM attestation requires TLS (warewulf:tls), which is disabled: runtime overlays of TPM nodes will be refused")
+		problems = append(problems, Problem{Fatal: true, Message: "TPM attestation requires TLS (warewulf:tls), which is disabled; the runtime overlays of TPM nodes will be refused"})
 	}
 	if !conf.Warewulf.GrubBoot() {
-		warnings = append(warnings, "TPM attestation requires GRUB boot (warewulf:grubboot), which is disabled: TPM nodes will fail attestation")
+		problems = append(problems, Problem{Message: "TPM attestation requires GRUB boot (warewulf:grubboot), which is disabled; TPM nodes booted otherwise fail attestation"})
 	}
-	return warnings
+	return problems
 }

@@ -101,6 +101,10 @@ Requirements
   modules must be built into the GRUB image: modules loaded at boot are
   measured too, but they are not files Warewulf sent, so attestation fails.
 
+``wwctl check`` reports whether the server meets these requirements for the
+nodes that have TPM attestation enabled, and lists TPM changes awaiting
+approval.
+
 Quickstart
 ==========
 

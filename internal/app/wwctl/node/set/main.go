@@ -68,8 +68,8 @@ func CobraRunE(vars *variables) func(cmd *cobra.Command, args []string) (err err
 
 		changed := cmd.Flags().Changed
 		if changed("tpm") && util.BoolP(vars.nodeConf.TpmP) {
-			for _, warning := range tpm.ServerWarnings(warewulfconf.Get()) {
-				wwlog.Warn("%s", warning)
+			for _, problem := range tpm.ServerProblems(warewulfconf.Get()) {
+				wwlog.Warn("%s", problem.Message)
 			}
 		}
 		nodeChanges := map[string][]node.Change{}
