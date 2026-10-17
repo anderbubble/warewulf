@@ -74,7 +74,7 @@ func CobraRunE(cmd *cobra.Command, args []string) error {
 		quoteStatus := "PASS"
 		if !quote.Current.HasQuote() {
 			quoteStatus = "N/A"
-		} else if verified, err := quote.Current.Verify(); !verified {
+		} else if err := quote.Current.Verify(); err != nil {
 			wwlog.Debug("Quote Verification Failed for %s: %v", n.Id(), err)
 			quoteStatus = "FAIL"
 		}
@@ -83,7 +83,7 @@ func CobraRunE(cmd *cobra.Command, args []string) error {
 		grubStatus := "N/A"
 		if quote.EventLog != "" {
 			eventlogStatus = "PASS"
-			if verified, err := quote.VerifyEventLogData(&quote.Current); !verified {
+			if err := quote.VerifyEventLogData(&quote.Current); err != nil {
 				wwlog.Debug("Event Log Verification Failed for %s: %v", n.Id(), err)
 				eventlogStatus = "FAIL"
 			}
@@ -128,7 +128,7 @@ func CobraRunE(cmd *cobra.Command, args []string) error {
 		if quote.New.HasQuote() {
 			manufacturerNew := quote.New.GetManufacturer()
 			quoteStatusNew := "PASS"
-			if verified, err := quote.New.Verify(); !verified {
+			if err := quote.New.Verify(); err != nil {
 				wwlog.Debug("New Quote Verification Failed for %s: %v", n.Id(), err)
 				quoteStatusNew = "FAIL"
 			}
@@ -137,7 +137,7 @@ func CobraRunE(cmd *cobra.Command, args []string) error {
 			grubStatusNew := "N/A"
 			if quote.EventLog != "" {
 				eventlogStatusNew = "PASS"
-				if verified, err := quote.VerifyEventLogData(&quote.New); !verified {
+				if err := quote.VerifyEventLogData(&quote.New); err != nil {
 					wwlog.Debug("New Event Log Verification Failed for %s: %v", n.Id(), err)
 					eventlogStatusNew = "FAIL"
 				}

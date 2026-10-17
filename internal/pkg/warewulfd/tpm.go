@@ -137,12 +137,12 @@ func TPMChallengeSend(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if verify, err := existingQuote.Verify(); !verify && err != nil {
+	if err := existingQuote.Verify(); err != nil {
 		wwlog.Error("Failed to verify TPM quote: %s", err)
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	if verify, err := existingQuote.VerifyEventLog(); !verify && err != nil {
+	if err := existingQuote.VerifyEventLog(); err != nil {
 		wwlog.Error("Failed to reply TPM log: %s", err)
 		w.WriteHeader(http.StatusUnauthorized)
 		return

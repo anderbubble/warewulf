@@ -1,58 +1,8 @@
 package tpm
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"testing"
 )
-
-func TestVerifyGrubBinary(t *testing.T) {
-	// 1. Create dummy checksums
-	sum1 := sha256.Sum256([]byte("file1"))
-	sum2 := sha256.Sum256([]byte("file2"))
-
-	sum1Hex := hex.EncodeToString(sum1[:])
-	sum2Hex := hex.EncodeToString(sum2[:])
-
-	// 2. Calculate expected PCR9
-	pcr := make([]byte, 32)
-
-	// Extend sum1
-	h := sha256.New()
-	h.Write(pcr)
-	h.Write(sum1[:])
-	pcr = h.Sum(nil)
-
-	// Extend sum2
-	h.Reset()
-	h.Write(pcr)
-	h.Write(sum2[:])
-	pcr = h.Sum(nil)
-
-	pcrHex := hex.EncodeToString(pcr)
-
-	quote := Quote{
-		SentLog: []FileLog{
-			{Filename: "file1", Checksum: sum1Hex},
-			{Filename: "file2", Checksum: sum2Hex},
-		},
-		Current: TpmData{
-			PCRs: map[string]string{
-				"9": pcrHex,
-			},
-		},
-	}
-
-	if err := quote.VerifyGrubBinary(); err != nil {
-		t.Errorf("VerifyGrubBinary failed: %v", err)
-	}
-
-	// Test failure
-	quote.Current.PCRs["9"] = "0000000000000000000000000000000000000000000000000000000000000000"
-	if err := quote.VerifyGrubBinary(); err == nil {
-		t.Error("VerifyGrubBinary should have failed with wrong PCR")
-	}
-}
 
 func TestTpmDataEqual(t *testing.T) {
 	data1 := TpmData{
@@ -98,11 +48,17 @@ func TestTpmDataEqual(t *testing.T) {
 		EKCert: "cert1",
 		EKPub:  "ekpub1",
 		PCRs: map[string]string{
-			"1": "pcr1_diff",
+			"1":  "pcr1_diff",
+			"11": "pcr11",
 		},
 	}
+	if !data1.Equal(&data3) {
+		t.Error("TpmData.Equal failed: should ignore PCRs outside the baseline")
+	}
+
+	data3.PCRs["0"] = "pcr0_diff"
 	if data1.Equal(&data3) {
-		t.Error("TpmData.Equal failed: should detect different PCR 1")
+		t.Error("TpmData.Equal failed: should detect different baseline PCR 0")
 	}
 
 	data4 := TpmData{
