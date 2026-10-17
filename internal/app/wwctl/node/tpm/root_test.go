@@ -21,6 +21,6 @@ func Test_GetCommand(t *testing.T) {
 
 	assert.True(t, found["list"])
 	assert.True(t, found["verify"])
-	assert.True(t, found["check"])
 	assert.True(t, found["reset"])
+	assert.True(t, found["approve"])
 }

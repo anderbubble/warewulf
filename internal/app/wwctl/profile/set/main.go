@@ -5,7 +5,9 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	warewulfconf "github.com/warewulf/warewulf/internal/pkg/config"
 	"github.com/warewulf/warewulf/internal/pkg/node"
+	"github.com/warewulf/warewulf/internal/pkg/tpm"
 	"github.com/warewulf/warewulf/internal/pkg/util"
 	"github.com/warewulf/warewulf/internal/pkg/warewulfd"
 	"github.com/warewulf/warewulf/internal/pkg/wwlog"
@@ -60,6 +62,11 @@ func CobraRunE(vars *variables) func(cmd *cobra.Command, args []string) (err err
 		}
 
 		changed := cmd.Flags().Changed
+		if changed("tpm") && util.BoolP(vars.profileConf.TpmP) {
+			for _, warning := range tpm.ServerWarnings(warewulfconf.Get()) {
+				wwlog.Warn("%s", warning)
+			}
+		}
 		profileChanges := map[string][]node.Change{}
 		for _, profileId := range args {
 			wwlog.Verbose("evaluating profile: %s", profileId)

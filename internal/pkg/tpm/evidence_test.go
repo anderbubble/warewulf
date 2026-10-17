@@ -4,9 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/hex"
-	"fmt"
 	"testing"
 
 	"github.com/google/go-tpm/legacy/tpm2"
@@ -195,35 +193,9 @@ func TestDiffBaseline(t *testing.T) {
 	assert.Equal(t, []int{4}, tpm.DiffBaseline(enrolled, current))
 }
 
-func legacyQuote(f *tpmtest.TPM) tpm.Quote {
-	ev, err := f.Evidence(nonce(), nil)
-	if err != nil {
-		panic(err)
-	}
-	pcrs := map[string]string{}
-	for i, v := range ev.PCRs {
-		pcrs[fmt.Sprint(i)] = hex.EncodeToString(v)
-	}
-	return tpm.Quote{
-		Current:  tpm.TpmData{PCRs: pcrs},
-		EventLog: base64.StdEncoding.EncodeToString(ev.EventLog),
-	}
-}
-
-func TestVerifyGrubBinary(t *testing.T) {
-	f, files := booted(t)
-	q := legacyQuote(f)
-	for _, file := range files {
-		q.SentLog = append(q.SentLog, tpm.FileLog{Filename: file.Path, Checksum: file.Digest})
-	}
-	assert.NoError(t, q.VerifyGrubBinary())
-
-	q.SentLog = q.SentLog[1:]
-	assert.Error(t, q.VerifyGrubBinary(), "a measured file that was not sent fails")
-
-	q.EventLog = ""
-	assert.Error(t, q.VerifyGrubBinary(), "a quote without an event log fails")
-
-	empty := legacyQuote(tpmtest.MustNew())
-	assert.Error(t, empty.VerifyGrubBinary(), "a boot with nothing measured in PCR 9 fails")
+func TestManufacturer(t *testing.T) {
+	assert.Equal(t, "Unknown", tpm.Manufacturer(nil))
+	assert.Equal(t, "Unknown", tpm.Manufacturer([]byte("not a certificate")))
+	f := tpmtest.MustNew()
+	assert.Equal(t, "Unknown", tpm.Manufacturer(tpmtest.EKCert(&f.EK.PublicKey)), "no manufacturer attribute")
 }

@@ -2,12 +2,14 @@ package list
 
 import (
 	"bytes"
-	"path"
-	"strings"
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/warewulf/warewulf/internal/pkg/testenv"
+	"github.com/warewulf/warewulf/internal/pkg/tpm"
+	"github.com/warewulf/warewulf/internal/pkg/tpm/tpmtest"
 	"github.com/warewulf/warewulf/internal/pkg/warewulfd"
 )
 
@@ -15,106 +17,36 @@ func Test_List(t *testing.T) {
 	warewulfd.SetNoDaemon()
 	env := testenv.New(t)
 	defer env.RemoveAll()
+	tpm.ResetDefaultStore()
+	defer tpm.ResetDefaultStore()
+	env.WriteFile("etc/warewulf/nodes.conf", `nodes:
+  n1:
+    tpm: true
+  n2:
+    tpm: true
+  n3: {}`)
+	secret, err := tpmtest.MustNew().Attest(tpm.DefaultStore(), "n1")
+	require.NoError(t, err)
 
-	tests := []struct {
-		name     string
-		args     []string
-		tpmFiles map[string]string
-		stdout   string
-	}{
-		{
-			name: "node with no tpm data",
-			args: []string{"node1"},
-			stdout: `
-NODE   MANUFACTURER  QUOTE  EVENTLOG  GRUB  EKPUB (SHA256)
-----   ------------  -----  --------  ----  --------------
-node1  --            --     --        --    --
-`,
-		},
-		{
-			name: "node with invalid tpm data",
-			args: []string{"node1"},
-			tpmFiles: map[string]string{
-				"node1": `invalid json`,
-			},
-			stdout: `
-NODE   MANUFACTURER  QUOTE  EVENTLOG  GRUB  EKPUB (SHA256)
-----   ------------  -----  --------  ----  --------------
-node1  --            ERR    --        --    --
-`,
-		},
-		{
-			name: "node with incomplete tpm data (N/A)",
-			args: []string{"node1"},
-			tpmFiles: map[string]string{
-				"node1": `{"id":"node1"}`,
-			},
-			stdout: `
-NODE   MANUFACTURER  QUOTE  EVENTLOG  GRUB  EKPUB (SHA256)
-----   ------------  -----  --------  ----  --------------
-node1  Unknown       N/A    N/A       N/A   N/A
-`,
-		},
-		{
-			name: "node with garbage eventlog",
-			args: []string{"node1"},
-			tpmFiles: map[string]string{
-				"node1": `{"id":"node1", "eventlog":"Z2FyYmFnZQ=="}`,
-			},
-			stdout: `
-NODE   MANUFACTURER  QUOTE  EVENTLOG  GRUB  EKPUB (SHA256)
-----   ------------  -----  --------  ----  --------------
-node1  Unknown       N/A    FAIL      FAIL  N/A
-`,
-		},
-		{
-			name: "node with key flag but no challenge data",
-			args: []string{"node1", "--key"},
-			tpmFiles: map[string]string{
-				"node1": `{"id":"node1"}`,
-			},
-			stdout: `
-NODE   MANUFACTURER  QUOTE  EVENTLOG  GRUB  SECRET
-----   ------------  -----  --------  ----  ------
-node1  Unknown       N/A    N/A       N/A   N/A
-`,
-		},
-		{
-			name: "node with key flag and challenge data",
-			args: []string{"node1", "--key"},
-			tpmFiles: map[string]string{
-				"node1": `{"id":"node1", "challenge":{"secret":"c2VjcmV0"}}`,
-			},
-			stdout: `
-NODE   MANUFACTURER  QUOTE  EVENTLOG  GRUB  SECRET
-----   ------------  -----  --------  ----  ------
-node1  Unknown       N/A    N/A       N/A   736563726574
-`,
-		},
-	}
+	out := run(t)
+	assert.Regexp(t, `NODE\s+STATE\s+MANUFACTURER\s+EK \(SHA256\)\s+LAST ATTEST\s+SECRET`, out)
+	assert.Regexp(t, `n1\s+ENROLLED\s+Unknown\s+[0-9a-f]{16}\.\.\.\s+ok \S+ \S+\s+current`, out)
+	assert.Regexp(t, `n2\s+UNENROLLED\s+--\s+--\s+--\s+none`, out)
+	assert.NotContains(t, out, "n3", "nodes without TPM are not listed")
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Clear any previous tpm files
-			env.RemoveAll()
-			env = testenv.New(t)
-			_ = env.Configure()
-			keyFlag = false // Reset global flag
+	var statuses []NodeTpmStatus
+	require.NoError(t, json.Unmarshal([]byte(run(t, "--json")), &statuses))
+	require.Len(t, statuses, 2)
+	assert.Len(t, statuses[0].EKFingerprint, 64)
+	assert.NotContains(t, run(t, "--json"), string(secret), "the secret is never shown")
+}
 
-			for nodeName, content := range tt.tpmFiles {
-				tpmPath := path.Join("srv/warewulf/overlays", nodeName, "tpm.json")
-				env.WriteFile(tpmPath, content)
-			}
-
-			buf := new(bytes.Buffer)
-			baseCmd := GetCommand()
-			baseCmd.SetOut(buf)
-			baseCmd.SetErr(buf)
-			baseCmd.SetArgs(tt.args)
-
-			err := baseCmd.Execute()
-			assert.NoError(t, err)
-			assert.Equal(t, strings.TrimSpace(tt.stdout), strings.TrimSpace(buf.String()))
-		})
-	}
+func run(t *testing.T, args ...string) string {
+	t.Helper()
+	cmd := GetCommand()
+	cmd.SetArgs(args)
+	buf := new(bytes.Buffer)
+	cmd.SetOut(buf)
+	require.NoError(t, cmd.Execute())
+	return buf.String()
 }

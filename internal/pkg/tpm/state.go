@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	warewulfconf "github.com/warewulf/warewulf/internal/pkg/config"
 )
 
 // StateVersion is the current State format.
@@ -343,4 +345,17 @@ func (s *State) SecretStatus() string {
 	default:
 		return "none"
 	}
+}
+
+// ServerWarnings returns what in the server configuration would keep TPM
+// attestation from working.
+func ServerWarnings(conf *warewulfconf.WarewulfYaml) []string {
+	var warnings []string
+	if !conf.Warewulf.TLSEnabled() {
+		warnings = append(warnings, "TPM attestation requires TLS (warewulf:tls), which is disabled: runtime overlays of TPM nodes will be refused")
+	}
+	if !conf.Warewulf.GrubBoot() {
+		warnings = append(warnings, "TPM attestation requires GRUB boot (warewulf:grubboot), which is disabled: TPM nodes will fail attestation")
+	}
+	return warnings
 }

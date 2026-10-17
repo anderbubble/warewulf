@@ -211,10 +211,6 @@ func VerifyEvidence(ev *Evidence, nonce []byte, sent []SentFile) (*Verified, err
 // kernel. A boot that GRUB did not perform (iPXE, local disk) has no such
 // events and fails.
 func VerifyBootFiles(events []attest.Event, sent []SentFile) error {
-	return checkBootFiles(events, sent, true)
-}
-
-func checkBootFiles(events []attest.Event, sent []SentFile, requireKernel bool) error {
 	stages := map[string][]string{}
 	for _, f := range sent {
 		stages[f.Digest] = append(stages[f.Digest], f.Stage)
@@ -237,7 +233,7 @@ func checkBootFiles(events []attest.Event, sent []SentFile, requireKernel bool) 
 	if count == 0 {
 		return newError(CodeNoBootFiles, "no boot files measured in PCR %d", PCRBootFiles)
 	}
-	if requireKernel && !kernel {
+	if !kernel {
 		return newError(CodeNoKernel, "no kernel sent by this server was measured in PCR %d", PCRBootFiles)
 	}
 	return nil

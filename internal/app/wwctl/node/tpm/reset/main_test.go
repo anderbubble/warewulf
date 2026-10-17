@@ -2,95 +2,62 @@ package reset
 
 import (
 	"bytes"
-	"os"
-	"path"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/warewulf/warewulf/internal/pkg/testenv"
+	"github.com/warewulf/warewulf/internal/pkg/tpm"
+	"github.com/warewulf/warewulf/internal/pkg/tpm/tpmtest"
 	"github.com/warewulf/warewulf/internal/pkg/warewulfd"
-	"github.com/warewulf/warewulf/internal/pkg/wwlog"
 )
 
 func Test_Reset(t *testing.T) {
 	warewulfd.SetNoDaemon()
 	env := testenv.New(t)
 	defer env.RemoveAll()
+	tpm.ResetDefaultStore()
+	defer tpm.ResetDefaultStore()
+	env.WriteFile("etc/warewulf/nodes.conf", `nodes:
+  n1:
+    tpm: true`)
+	store := tpm.DefaultStore()
+	_, err := tpmtest.MustNew().Attest(store, "n1")
+	require.NoError(t, err)
 
-	tests := []struct {
-		name          string
-		args          []string
-		tpmFiles      map[string]string
-		stdout        string
-		expectRemoved bool
-	}{
-		{
-			name: "node with no tpm data",
-			args: []string{"node1"},
-			stdout: `
-No TPM quote found for node node1
-`,
-		},
-		{
-			name: "node with only current quote",
-			args: []string{"node1"},
-			tpmFiles: map[string]string{
-				"node1": `{"current": {"quote": "current_quote", "signature": "sig", "ak_pub": "ak", "nonce": "nonce"}}`,
-			},
-			stdout: `
-Removed Current TPM quote for node node1
-`,
-			expectRemoved: true,
-		},
-		{
-			name: "node with new quote",
-			args: []string{"node1"},
-			tpmFiles: map[string]string{
-				"node1": `{"current": {"quote": "current_quote", "signature": "sig", "ak_pub": "ak", "nonce": "nonce"}, "new": {"quote": "new_quote", "signature": "sig", "ak_pub": "ak", "nonce": "nonce"}}`,
-			},
-			stdout: `
-Moved NEW TPM quote to Current for node node1
-`,
-			expectRemoved: false,
-		},
-	}
+	out, err := run("n1")
+	require.NoError(t, err)
+	assert.Equal(t, "n1: TPM secret reset; it will attest again\n", out)
+	st, err := store.Load("n1")
+	require.NoError(t, err)
+	assert.Equal(t, "none", st.SecretStatus())
+	assert.Equal(t, "ENROLLED", st.Status(), "enrollment is kept")
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			env.RemoveAll()
-			env = testenv.New(t)
-			_ = env.Configure()
+	out, err = run("--enrollment", "n1")
+	require.NoError(t, err)
+	assert.Equal(t, "n1: TPM enrollment reset; its next attestation enrolls it\n", out)
+	st, err = store.Load("n1")
+	require.NoError(t, err)
+	assert.Equal(t, "UNENROLLED", st.Status())
 
-			for nodeName, content := range tt.tpmFiles {
-				tpmPath := path.Join("srv/warewulf/overlays", nodeName, "tpm.json")
-				env.WriteFile(tpmPath, content)
-			}
+	_, err = run("n9")
+	assert.Error(t, err)
 
-			buf := new(bytes.Buffer)
-			wwlog.SetLogWriter(buf)
-			wwlog.SetLogWriterErr(buf)
-			wwlog.SetLogWriterInfo(buf)
+	require.NoError(t, store.Delete("n1"))
+	out, err = run("n1")
+	require.NoError(t, err)
+	assert.Equal(t, "n1: no TPM state to reset\n", out)
+	assert.False(t, store.Exists("n1"), "no state file is created")
+	_, err = run()
+	assert.Error(t, err, "a node is required")
+}
 
-			baseCmd := GetCommand()
-			baseCmd.SetOut(buf)
-			baseCmd.SetErr(buf)
-			baseCmd.SetArgs(tt.args)
-
-			err := baseCmd.Execute()
-			assert.NoError(t, err)
-
-			output := buf.String()
-			expected := strings.TrimSpace(tt.stdout)
-
-			assert.Equal(t, expected, strings.TrimSpace(output))
-
-			// Check file system state
-			if tt.expectRemoved {
-				tpmPath := path.Join(env.BaseDir, "srv/warewulf/overlays/node1/tpm.json")
-				_, err := os.Stat(tpmPath)
-				assert.True(t, os.IsNotExist(err), "File should have been removed")
-			}
-		})
-	}
+func run(args ...string) (string, error) {
+	cmd := GetCommand()
+	cmd.SetArgs(args)
+	buf := new(bytes.Buffer)
+	cmd.SetOut(buf)
+	cmd.SetErr(new(bytes.Buffer))
+	err := cmd.Execute()
+	return buf.String(), err
 }

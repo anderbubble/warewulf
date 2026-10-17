@@ -2,11 +2,13 @@ package set
 
 import (
 	"bytes"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/warewulf/warewulf/internal/pkg/testenv"
 	"github.com/warewulf/warewulf/internal/pkg/warewulfd"
+	"github.com/warewulf/warewulf/internal/pkg/wwlog"
 )
 
 func Test_Node_Set(t *testing.T) {
@@ -841,4 +843,30 @@ nodes:
 			}
 		})
 	}
+}
+
+func Test_Node_Set_TPMWarnings(t *testing.T) {
+	env := testenv.New(t)
+	defer env.RemoveAll()
+	env.WriteFile("etc/warewulf/nodes.conf", `nodes:
+  n01: {}`)
+	warewulfd.SetNoDaemon()
+	logs := new(bytes.Buffer)
+	wwlog.SetLogWriter(logs)
+	defer wwlog.SetLogWriter(os.Stdout)
+
+	baseCmd := GetCommand()
+	baseCmd.SetArgs([]string{"--tpm=true", "n01", "--yes"})
+	baseCmd.SetOut(new(bytes.Buffer))
+	assert.NoError(t, baseCmd.Execute())
+	assert.Contains(t, logs.String(), "TPM attestation requires TLS")
+	assert.Contains(t, logs.String(), "TPM attestation requires GRUB boot")
+	assert.Contains(t, env.ReadFile("etc/warewulf/nodes.conf"), "tpm: true", "the setting is still applied")
+
+	logs.Reset()
+	baseCmd = GetCommand()
+	baseCmd.SetArgs([]string{"--tpm=false", "n01", "--yes"})
+	baseCmd.SetOut(new(bytes.Buffer))
+	assert.NoError(t, baseCmd.Execute())
+	assert.NotContains(t, logs.String(), "TPM attestation requires")
 }

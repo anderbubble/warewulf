@@ -1,74 +1,37 @@
 package reset
 
 import (
-	"encoding/json"
-	"os"
-	"path"
-	"sort"
+	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/warewulf/warewulf/internal/pkg/config"
-	"github.com/warewulf/warewulf/internal/pkg/hostlist"
-	"github.com/warewulf/warewulf/internal/pkg/node"
+	"github.com/warewulf/warewulf/internal/app/wwctl/node/tpm/report"
 	"github.com/warewulf/warewulf/internal/pkg/tpm"
-	"github.com/warewulf/warewulf/internal/pkg/wwlog"
 )
 
-func CobraRunE(cmd *cobra.Command, args []string) error {
-	// Node based verification
-	nodeDB, err := node.New()
+func CobraRunE(cmd *cobra.Command, args []string, enrollment bool) error {
+	ids, err := report.Nodes(args)
 	if err != nil {
 		return err
 	}
-	nodes, err := nodeDB.FindAllNodes()
-	if err != nil {
-		return err
+	if len(ids) == 0 {
+		return fmt.Errorf("no nodes with TPM attestation match %v", args)
 	}
-	nodeNames := hostlist.Expand(args)
-	sort.Strings(nodeNames)
-	filtered := node.FilterNodeListByName(nodes, nodeNames)
-
-	conf := config.Get()
-	for _, n := range filtered {
-		tpmPath := path.Join(conf.Paths.OverlayProvisiondir(), n.Id(), "tpm.json")
-		data, err := os.ReadFile(tpmPath)
-		if err != nil {
-			if os.IsNotExist(err) {
-				wwlog.Info("No TPM quote found for node %s", n.Id())
-			} else {
-				wwlog.Warn("reading tpm quote for node %s: %v", n.Id(), err)
-			}
+	store := tpm.DefaultStore()
+	for _, id := range ids {
+		if !store.Exists(id) {
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s: no TPM state to reset\n", id)
 			continue
 		}
-		var quote tpm.Quote
-		if err := json.Unmarshal(data, &quote); err != nil {
-			wwlog.Warn("unmarshalling quote for node %s: %v", n.Id(), err)
-			continue
+		if err := store.Update(id, func(st *tpm.State) error {
+			st.Reset(enrollment)
+			return nil
+		}); err != nil {
+			return err
 		}
-
-		if quote.New.HasQuote() {
-			quote.Current = quote.New
-			quote.New = tpm.TpmData{}
-			quote.Challenge = nil
-
-			out, err := json.MarshalIndent(quote, "", "  ")
-			if err != nil {
-				wwlog.Error("marshalling updated quote for node %s: %v", n.Id(), err)
-				continue
-			}
-			if err := os.WriteFile(tpmPath, out, 0644); err != nil {
-				wwlog.Error("writing updated quote for node %s: %v", n.Id(), err)
-				continue
-			}
-			wwlog.Info("Moved NEW TPM quote to Current for node %s", n.Id())
-		} else if quote.Current.HasQuote() {
-			if err := os.Remove(tpmPath); err != nil && !os.IsNotExist(err) {
-				wwlog.Error("removing tpm quote for node %s: %v", n.Id(), err)
-				continue
-			}
-			wwlog.Info("Removed Current TPM quote for node %s", n.Id())
+		if enrollment {
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s: TPM enrollment reset; its next attestation enrolls it\n", id)
 		} else {
-			wwlog.Info("No active TPM quote to reset for node %s", n.Id())
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "%s: TPM secret reset; it will attest again\n", id)
 		}
 	}
 	return nil

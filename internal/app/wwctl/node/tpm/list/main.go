@@ -1,181 +1,74 @@
 package list
 
 import (
-	"crypto/sha256"
-	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"os"
-	"path"
-	"sort"
 
 	"github.com/spf13/cobra"
+	"github.com/warewulf/warewulf/internal/app/wwctl/node/tpm/report"
 	"github.com/warewulf/warewulf/internal/app/wwctl/table"
-	"github.com/warewulf/warewulf/internal/pkg/config"
-	"github.com/warewulf/warewulf/internal/pkg/hostlist"
-	"github.com/warewulf/warewulf/internal/pkg/node"
 	"github.com/warewulf/warewulf/internal/pkg/tpm"
-	"github.com/warewulf/warewulf/internal/pkg/wwlog"
 )
 
+// NodeTpmStatus is one node in `wwctl node tpm list --json`.
 type NodeTpmStatus struct {
-	Node         string `json:"node"`
-	Manufacturer string `json:"manufacturer"`
-	Quote        string `json:"quote"`
-	EventLog     string `json:"eventlog"`
-	Grub         string `json:"grub"`
-	EKPub        string `json:"ekpub"`
-	Secret       string `json:"secret"`
+	Node          string       `json:"node"`
+	State         string       `json:"state"`
+	Manufacturer  string       `json:"manufacturer,omitempty"`
+	EKFingerprint string       `json:"ek_fingerprint,omitempty"`
+	Candidate     *Candidate   `json:"candidate,omitempty"`
+	LastAttempt   *tpm.Attempt `json:"last_attempt,omitempty"`
+	Secret        string       `json:"secret"`
 }
 
-func CobraRunE(cmd *cobra.Command, args []string) error {
-	// Node based verification
-	nodeDB, err := node.New()
+// Candidate is a change awaiting approval.
+type Candidate struct {
+	ID            string   `json:"id"`
+	Reason        tpm.Code `json:"reason"`
+	EKFingerprint string   `json:"ek_fingerprint"`
+	Changed       []int    `json:"changed_pcrs,omitempty"`
+}
+
+func CobraRunE(cmd *cobra.Command, args []string, jsonFlag bool) error {
+	ids, err := report.Nodes(args)
 	if err != nil {
 		return err
 	}
-	nodes, err := nodeDB.FindAllNodes()
-	if err != nil {
-		return err
-	}
-	nodeNames := hostlist.Expand(args)
-	sort.Strings(nodeNames)
-	filtered := node.FilterNodeListByName(nodes, nodeNames)
-
-	// Tabular view
-	t := table.New(cmd.OutOrStdout())
-
-	if keyFlag {
-		t.AddHeader("NODE", "MANUFACTURER", "QUOTE", "EVENTLOG", "GRUB", "SECRET")
-	} else {
-		t.AddHeader("NODE", "MANUFACTURER", "QUOTE", "EVENTLOG", "GRUB", "EKPUB (SHA256)")
-	}
-
-	var jsonResults []NodeTpmStatus
-
-	conf := config.Get()
-	for _, n := range filtered {
-		tpmPath := path.Join(conf.Paths.OverlayProvisiondir(), n.Id(), "tpm.json")
-		data, err := os.ReadFile(tpmPath)
+	store := tpm.DefaultStore()
+	var statuses []NodeTpmStatus
+	for _, id := range ids {
+		st, err := store.Load(id)
 		if err != nil {
-			t.AddLine(table.Prep([]string{n.Id(), "", "", "", "", ""})...)
-			jsonResults = append(jsonResults, NodeTpmStatus{Node: n.Id()})
-			continue
+			return err
 		}
-		var quote tpm.Quote
-		if err := json.Unmarshal(data, &quote); err != nil {
-			t.AddLine(table.Prep([]string{n.Id(), "", "ERR", "", "", ""})...)
-			jsonResults = append(jsonResults, NodeTpmStatus{Node: n.Id(), Quote: "ERR"})
-			continue
+		s := NodeTpmStatus{Node: id, State: st.Status(), LastAttempt: st.LastAttempt, Secret: st.SecretStatus()}
+		if e := st.Enrolled; e != nil {
+			s.Manufacturer, s.EKFingerprint = tpm.Manufacturer(e.EKCert), e.EKFingerprint
 		}
-
-		manufacturer := quote.Current.GetManufacturer()
-		quoteStatus := "PASS"
-		if !quote.Current.HasQuote() {
-			quoteStatus = "N/A"
-		} else if err := quote.Current.Verify(); err != nil {
-			wwlog.Debug("Quote Verification Failed for %s: %v", n.Id(), err)
-			quoteStatus = "FAIL"
+		if c := st.Candidate; c != nil {
+			s.Candidate = &Candidate{ID: c.ID(), Reason: c.Reason, EKFingerprint: c.EKFingerprint, Changed: c.Changed}
 		}
-
-		eventlogStatus := "N/A"
-		grubStatus := "N/A"
-		if quote.EventLog != "" {
-			eventlogStatus = "PASS"
-			if err := quote.VerifyEventLogData(&quote.Current); err != nil {
-				wwlog.Debug("Event Log Verification Failed for %s: %v", n.Id(), err)
-				eventlogStatus = "FAIL"
-			}
-
-			grubStatus = "PASS"
-			if err := quote.VerifyGrubBinaryData(&quote.Current); err != nil {
-				wwlog.Debug("GRUB Binary Log Verification Failed for %s: %v", n.Id(), err)
-				grubStatus = "FAIL"
-			}
-		}
-
-		ekPubStr := "N/A"
-		secretStr := "N/A"
-		if quote.Challenge != nil && len(quote.Challenge.Secret) > 0 {
-			secretStr = hex.EncodeToString(quote.Challenge.Secret)
-		}
-		if quote.Current.EKPub != "" {
-			if ekPubBytes, err := base64.StdEncoding.DecodeString(quote.Current.EKPub); err == nil {
-				hash := sha256.Sum256(ekPubBytes)
-				ekPubStr = hex.EncodeToString(hash[:])
-			} else {
-				ekPubStr = "ERR"
-			}
-		}
-
-		lastColStr := ekPubStr
-		if keyFlag {
-			lastColStr = secretStr
-		}
-
-		t.AddLine(table.Prep([]string{n.Id(), manufacturer, quoteStatus, eventlogStatus, grubStatus, lastColStr})...)
-		jsonResults = append(jsonResults, NodeTpmStatus{
-			Node:         n.Id(),
-			Manufacturer: manufacturer,
-			Quote:        quoteStatus,
-			EventLog:     eventlogStatus,
-			Grub:         grubStatus,
-			EKPub:        ekPubStr,
-			Secret:       secretStr,
-		})
-
-		if quote.New.HasQuote() {
-			manufacturerNew := quote.New.GetManufacturer()
-			quoteStatusNew := "PASS"
-			if err := quote.New.Verify(); err != nil {
-				wwlog.Debug("New Quote Verification Failed for %s: %v", n.Id(), err)
-				quoteStatusNew = "FAIL"
-			}
-
-			eventlogStatusNew := "N/A"
-			grubStatusNew := "N/A"
-			if quote.EventLog != "" {
-				eventlogStatusNew = "PASS"
-				if err := quote.VerifyEventLogData(&quote.New); err != nil {
-					wwlog.Debug("New Event Log Verification Failed for %s: %v", n.Id(), err)
-					eventlogStatusNew = "FAIL"
-				}
-
-				grubStatusNew = "PASS"
-				if err := quote.VerifyGrubBinaryData(&quote.New); err != nil {
-					wwlog.Debug("New GRUB Binary Log Verification Failed for %s: %v", n.Id(), err)
-					grubStatusNew = "FAIL"
-				}
-			}
-
-			ekPubStrNew := "N/A"
-			if quote.New.EKPub != "" {
-				if ekPubBytes, err := base64.StdEncoding.DecodeString(quote.New.EKPub); err == nil {
-					hash := sha256.Sum256(ekPubBytes)
-					ekPubStrNew = hex.EncodeToString(hash[:])
-				} else {
-					ekPubStrNew = "ERR"
-				}
-			}
-			lastColStrNew := ekPubStrNew
-			if keyFlag {
-				lastColStrNew = "--"
-			}
-
-			t.AddLine(table.Prep([]string{n.Id() + " (NEW)", manufacturerNew, quoteStatusNew, eventlogStatusNew, grubStatusNew, lastColStrNew})...)
-		}
+		statuses = append(statuses, s)
 	}
 
 	if jsonFlag {
 		encoder := json.NewEncoder(cmd.OutOrStdout())
 		encoder.SetIndent("", "  ")
-		if err := encoder.Encode(jsonResults); err != nil {
+		if err := encoder.Encode(statuses); err != nil {
 			return fmt.Errorf("failed to output JSON: %w", err)
 		}
-	} else {
-		t.Print()
+		return nil
 	}
 
+	t := table.New(cmd.OutOrStdout())
+	t.AddHeader("NODE", "STATE", "MANUFACTURER", "EK (SHA256)", "LAST ATTEST", "SECRET")
+	for _, s := range statuses {
+		ek := s.EKFingerprint
+		if len(ek) > 16 {
+			ek = ek[:16] + "..."
+		}
+		t.AddLine(table.Prep([]string{s.Node, s.State, s.Manufacturer, ek, report.LastAttempt(s.LastAttempt), s.Secret})...)
+	}
+	t.Print()
 	return nil
 }

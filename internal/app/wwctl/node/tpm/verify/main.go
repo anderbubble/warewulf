@@ -4,64 +4,60 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path"
-	"sort"
 
 	"github.com/spf13/cobra"
-	"github.com/warewulf/warewulf/internal/pkg/config"
-	"github.com/warewulf/warewulf/internal/pkg/hostlist"
-	"github.com/warewulf/warewulf/internal/pkg/node"
+	"github.com/warewulf/warewulf/internal/app/wwctl/node/tpm/report"
 	"github.com/warewulf/warewulf/internal/pkg/tpm"
-	"github.com/warewulf/warewulf/internal/pkg/wwlog"
 )
 
 func CobraRunE(vars *variables) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
-		// Node based verification
-		nodeDB, err := node.New()
+		if len(vars.files) > 0 {
+			return verifyFiles(cmd, vars)
+		}
+		ids, err := report.Nodes(args)
 		if err != nil {
 			return err
 		}
-		nodes, err := nodeDB.FindAllNodes()
-		if err != nil {
-			return err
+		store := tpm.DefaultStore()
+		failed := 0
+		for _, id := range ids {
+			st, err := store.Load(id)
+			if err != nil {
+				return err
+			}
+			if err := report.Write(cmd.OutOrStdout(), id, st, vars.pcrFilter, vars.displayEvent); err != nil {
+				failed++
+			}
 		}
-		nodeNames := hostlist.Expand(args)
-		sort.Strings(nodeNames)
-		filtered := node.FilterNodeListByName(nodes, nodeNames)
-
-		// Detailed view for each node
-		for _, n := range filtered {
-			conf := config.Get()
-			tpmPath := path.Join(conf.Paths.OverlayProvisiondir(), n.Id(), "tpm.json")
-			data, err := os.ReadFile(tpmPath)
-			if err != nil {
-				wwlog.Warn("reading tpm quote for node %s: %v", n.Id(), err)
-				continue
-			}
-			var quote tpm.Quote
-			if err := json.Unmarshal(data, &quote); err != nil {
-				wwlog.Warn("unmarshalling quote for node %s: %v", n.Id(), err)
-				continue
-			}
-			wwlog.Info("Node: %s", n.Id())
-			logStr, err := quote.VerifyAndDisplayData(&quote.Current, vars.pcrFilter, vars.displayEvent)
-			if err != nil {
-				wwlog.Error("Verifying node %s: %v", n.Id(), err)
-			} else if logStr != "" {
-				fmt.Print(logStr)
-			}
-
-			if quote.New.HasQuote() {
-				wwlog.Info("Node: %s (NEW)", n.Id())
-				logStrNew, errNew := quote.VerifyAndDisplayData(&quote.New, vars.pcrFilter, vars.displayEvent)
-				if errNew != nil {
-					wwlog.Error("Verifying node %s (NEW): %v", n.Id(), errNew)
-				} else if logStrNew != "" {
-					fmt.Print(logStrNew)
-				}
-			}
+		if failed > 0 {
+			return fmt.Errorf("TPM evidence failed to verify for %d node(s)", failed)
 		}
 		return nil
 	}
+}
+
+// verifyFiles reports on TPM state files given with --file.
+func verifyFiles(cmd *cobra.Command, vars *variables) error {
+	failed := 0
+	for _, name := range vars.files {
+		data, err := os.ReadFile(name)
+		if err != nil {
+			return err
+		}
+		var st tpm.State
+		if err := json.Unmarshal(data, &st); err != nil {
+			return fmt.Errorf("reading %s: %w", name, err)
+		}
+		if st.Version != tpm.StateVersion {
+			return fmt.Errorf("reading %s: not a TPM state file (version %d)", name, st.Version)
+		}
+		if err := report.Write(cmd.OutOrStdout(), name, &st, vars.pcrFilter, vars.displayEvent); err != nil {
+			failed++
+		}
+	}
+	if failed > 0 {
+		return fmt.Errorf("TPM evidence failed to verify in %d file(s)", failed)
+	}
+	return nil
 }

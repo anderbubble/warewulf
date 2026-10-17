@@ -13,6 +13,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"slices"
@@ -263,4 +264,51 @@ func writeSpecIDEvent(w *bytes.Buffer) {
 	w.Write(make([]byte, 20))                                    // SHA-1 digest
 	_ = binary.Write(w, binary.LittleEndian, uint32(spec.Len()))
 	w.Write(spec.Bytes())
+}
+
+// Attest records a GRUB boot of a kernel and an attestation of t for node in
+// store, as warewulfd and a node that proves it holds the TPM would: the
+// issued secret is used, which commits an enrollment, or, if the TPM or
+// baseline changed, confirms the candidate and returns its *tpm.Error. It
+// returns the issued secret.
+func (t *TPM) Attest(store *tpm.Store, node string) ([]byte, error) {
+	kernel := []byte("kernel for " + node)
+	if bytes.Equal(t.PCR(0), make([]byte, sha256.Size)) {
+		t.Extend(0, 0x80000008, []byte("firmware"))
+	}
+	t.Extend(tpm.PCRBootFiles, EvIPL, kernel)
+	sum := sha256.Sum256(kernel)
+	sent := tpm.SentFile{Path: "vmlinuz", Stage: tpm.StageKernel, Digest: hex.EncodeToString(sum[:])}
+
+	nonce := make([]byte, 32)
+	if _, err := rand.Read(nonce); err != nil {
+		return nil, err
+	}
+	ev, err := t.Evidence(nonce, nil)
+	if err != nil {
+		return nil, err
+	}
+	secret := make([]byte, 32)
+	if _, err := rand.Read(secret); err != nil {
+		return nil, err
+	}
+	err = store.Update(node, func(st *tpm.State) error {
+		st.StartBoot(time.Now())
+		st.RecordSent(sent)
+		v, err := tpm.VerifyEvidence(ev, nonce, st.SentFiles())
+		if err != nil {
+			st.Record(err, time.Now())
+			return err
+		}
+		enroll, candidate, err := st.Evaluate(ev, v, time.Now())
+		if candidate != nil {
+			st.AddConfirmation(secret, candidate, time.Now())
+			st.ConfirmCandidate(secret, time.Now())
+		} else {
+			st.AddPending(secret, ev, v, st.SentFiles(), enroll, time.Now())
+			st.CheckSecret(secret, time.Now())
+		}
+		return err
+	})
+	return secret, err
 }
