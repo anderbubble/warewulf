@@ -39,7 +39,7 @@ type TPM struct {
 	akPublic tpm2.Public
 	ak       tpm.AKParameters
 	pcrs     [numPCRs][]byte
-	log      bytes.Buffer
+	log      *EventLog
 }
 
 // New returns a TPM with fresh EK and AK keys, zeroed PCRs and an empty event
@@ -53,7 +53,7 @@ func New() (*TPM, error) {
 	for i := range t.pcrs {
 		t.pcrs[i] = make([]byte, sha256.Size)
 	}
-	writeSpecIDEvent(&t.log)
+	t.log = NewEventLog()
 	if err := t.NewAK(); err != nil {
 		return nil, err
 	}
@@ -136,14 +136,7 @@ func (t *TPM) ExtendDigest(pcr int, eventType uint32, digest, eventData []byte) 
 	h.Write(t.pcrs[pcr])
 	h.Write(digest)
 	t.pcrs[pcr] = h.Sum(nil)
-
-	_ = binary.Write(&t.log, binary.LittleEndian, uint32(pcr))
-	_ = binary.Write(&t.log, binary.LittleEndian, eventType)
-	_ = binary.Write(&t.log, binary.LittleEndian, uint32(1)) // digest count
-	_ = binary.Write(&t.log, binary.LittleEndian, uint16(tpm2.AlgSHA256))
-	t.log.Write(digest)
-	_ = binary.Write(&t.log, binary.LittleEndian, uint32(len(eventData)))
-	t.log.Write(eventData)
+	t.log.Add(pcr, eventType, digest, eventData)
 }
 
 // ExtendSilently changes pcr without logging it, as tampering would.
@@ -158,7 +151,7 @@ func (t *TPM) ExtendSilently(pcr int, digest []byte) {
 func (t *TPM) PCR(pcr int) []byte { return slices.Clone(t.pcrs[pcr]) }
 
 // EventLog returns the current measurement log.
-func (t *TPM) EventLog() []byte { return slices.Clone(t.log.Bytes()) }
+func (t *TPM) EventLog() []byte { return t.log.Bytes() }
 
 // EKPub returns the EK public key, PKIX DER encoded.
 func (t *TPM) EKPub() []byte {
@@ -247,9 +240,14 @@ func (t *TPM) sign(msg []byte) ([]byte, error) {
 	return tpm2.Signature{Alg: tpm2.AlgRSASSA, RSA: &tpm2.SignatureRSA{HashAlg: tpm2.AlgSHA256, Signature: s}}.Encode()
 }
 
-// writeSpecIDEvent writes the SHA-1 format header event that announces a
-// crypto-agile log with SHA-256 digests.
-func writeSpecIDEvent(w *bytes.Buffer) {
+// EventLog builds a crypto-agile measurement log with SHA-256 digests.
+type EventLog struct {
+	buf bytes.Buffer
+}
+
+// NewEventLog returns a log holding only its header event.
+func NewEventLog() *EventLog {
+	l := &EventLog{}
 	var spec bytes.Buffer
 	spec.WriteString("Spec ID Event03\x00")
 	_ = binary.Write(&spec, binary.LittleEndian, uint32(0)) // platform class
@@ -259,12 +257,28 @@ func writeSpecIDEvent(w *bytes.Buffer) {
 	_ = binary.Write(&spec, binary.LittleEndian, uint16(sha256.Size))
 	spec.WriteByte(0) // vendor info size
 
-	_ = binary.Write(w, binary.LittleEndian, uint32(0))          // PCR index
-	_ = binary.Write(w, binary.LittleEndian, uint32(EvNoAction)) // event type
-	w.Write(make([]byte, 20))                                    // SHA-1 digest
-	_ = binary.Write(w, binary.LittleEndian, uint32(spec.Len()))
-	w.Write(spec.Bytes())
+	// The header event uses the SHA-1 log format.
+	_ = binary.Write(&l.buf, binary.LittleEndian, uint32(0))          // PCR index
+	_ = binary.Write(&l.buf, binary.LittleEndian, uint32(EvNoAction)) // event type
+	l.buf.Write(make([]byte, 20))                                     // SHA-1 digest
+	_ = binary.Write(&l.buf, binary.LittleEndian, uint32(spec.Len()))
+	l.buf.Write(spec.Bytes())
+	return l
 }
+
+// Add logs an event that extended pcr with digest.
+func (l *EventLog) Add(pcr int, eventType uint32, digest, eventData []byte) {
+	_ = binary.Write(&l.buf, binary.LittleEndian, uint32(pcr))
+	_ = binary.Write(&l.buf, binary.LittleEndian, eventType)
+	_ = binary.Write(&l.buf, binary.LittleEndian, uint32(1)) // digest count
+	_ = binary.Write(&l.buf, binary.LittleEndian, uint16(tpm2.AlgSHA256))
+	l.buf.Write(digest)
+	_ = binary.Write(&l.buf, binary.LittleEndian, uint32(len(eventData)))
+	l.buf.Write(eventData)
+}
+
+// Bytes returns the log.
+func (l *EventLog) Bytes() []byte { return slices.Clone(l.buf.Bytes()) }
 
 // Attest records a GRUB boot of a kernel and an attestation of t for node in
 // store, as warewulfd and a node that proves it holds the TPM would: the

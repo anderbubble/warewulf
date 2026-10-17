@@ -116,6 +116,12 @@ locally:
    make fmt
    make lint vet staticcheck deadcode shellcheck
    make test
+   make test-tpmsim
+
+``test-tpmsim`` runs the TPM attestation tests against a software TPM, so it
+needs ``swtpm`` installed; without it the tests are skipped. The other TPM
+tests use a pure-Go stand-in (``internal/pkg/tpm/tpmtest``) and run with
+``make test``.
 
 ``deadcode`` fails on any unused function, so remove helpers you stop using.
 ``lint``, ``deadcode`` and ``shellcheck`` download their tools into ``.tools/``

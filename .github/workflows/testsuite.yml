@@ -22,7 +22,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update \
-          && sudo apt-get install libgpgme-dev squashfs-tools
+          && sudo apt-get install libgpgme-dev squashfs-tools swtpm
         shell: bash
       - name: Setup go ${{ matrix.go-version }}
         uses: actions/setup-go@v5
@@ -50,6 +50,8 @@ jobs:
         run: make deadcode
       - name: Run the test suite (golang ${{ matrix.go-version }})
         run: make test
+      - name: Run the TPM tests against swtpm (golang ${{ matrix.go-version }})
+        run: WW_REQUIRE_SWTPM=1 make test-tpmsim
       - name: Build Warewulf (golang ${{ matrix.go-version }})
         run: make all
       - name: Build the Docker image

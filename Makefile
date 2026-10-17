@@ -134,6 +134,10 @@ vet: $(config) ## Check for invalid code
 test: $(config) ## Run full test suite
 	TZ=UTC go test ./...
 
+.PHONY: test-tpmsim
+test-tpmsim: $(config) ## Run TPM attestation tests against a software TPM (needs swtpm)
+	TZ=UTC go test -tags tpmsim ./internal/app/wwclient/
+
 .PHONY: test-cover
 test-cover: $(config) ## Generate a coverage report for the test suite
 	rm -rf coverage

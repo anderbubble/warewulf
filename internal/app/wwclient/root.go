@@ -275,7 +275,7 @@ func CobraRunE(cmd *cobra.Command, args []string) (err error) {
 		scheme:    scheme,
 	}
 	secretPath := path.Join(conf.Paths.WWClientdir, "secret")
-	openTPM := openTPMAttestor(path.Join(conf.Paths.WWClientdir, "tpm", "ak.blob"))
+	openTPM := openTPMAttestor(path.Join(conf.Paths.WWClientdir, "tpm", "ak.blob"), openSystemTPM)
 
 	if attestFlag {
 		secret, err := attestTPM(webclient, opts, openTPM)

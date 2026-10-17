@@ -186,11 +186,14 @@ type tpmAttestor struct {
 	ak *attest.AK
 }
 
-// openTPMAttestor returns a function that opens the node's TPM, keeping its
-// attestation key at akPath.
-func openTPMAttestor(akPath string) func() (attestor, error) {
+// openSystemTPM opens the node's TPM device.
+func openSystemTPM() (*attest.TPM, error) { return attest.OpenTPM(nil) }
+
+// openTPMAttestor returns a function that opens a TPM with openTPM, keeping
+// its attestation key at akPath.
+func openTPMAttestor(akPath string, openTPM func() (*attest.TPM, error)) func() (attestor, error) {
 	return func() (attestor, error) {
-		t, err := attest.OpenTPM(nil)
+		t, err := openTPM()
 		if err != nil {
 			return nil, err
 		}
