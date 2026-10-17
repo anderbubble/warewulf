@@ -12,14 +12,7 @@ import (
 	"github.com/warewulf/warewulf/internal/pkg/wwlog"
 )
 
-const (
-	// TPMSecretHeader carries a node's runtime secret, hex encoded.
-	TPMSecretHeader = "X-Warewulf-TPM-Secret"
-	// TPMRequiredHeader on a 401 tells the node to attest with its TPM.
-	TPMRequiredHeader = "X-Warewulf-TPM"
-
-	maxEvidenceBytes = 4 << 20
-)
+const maxEvidenceBytes = 4 << 20
 
 // measuredStages are the stages whose files GRUB measures into PCR 9.
 var measuredStages = map[string]bool{
@@ -38,31 +31,6 @@ var generateActivation = func(p *attest.ActivationParameters) ([]byte, *attest.E
 }
 
 var nonces = newNonceStore()
-
-// TPMNonceResponse is the body of a successful /tpm/nonce request.
-type TPMNonceResponse struct {
-	Nonce []byte `json:"nonce"`
-	TTL   int    `json:"ttl"`
-}
-
-// TPMQuoteResponse is the body of a /tpm/quote response that issues a
-// credential. For a 409 (the TPM or its baseline changed), Error names the
-// change, and the node confirms it with the decrypted secret at /tpm/confirm.
-type TPMQuoteResponse struct {
-	Credential *attest.EncryptedCredential `json:"credential"`
-	Error      tpm.Code                    `json:"error,omitempty"`
-}
-
-// TPMConfirmResponse is the body of a successful /tpm/confirm request.
-type TPMConfirmResponse struct {
-	// Candidate is the ID of the change recorded for approval.
-	Candidate string `json:"candidate"`
-}
-
-// TPMErrorResponse is the body of a rejected TPM request.
-type TPMErrorResponse struct {
-	Error tpm.Code `json:"error"`
-}
 
 // HandleTPM serves /tpm/nonce/{wwid}, /tpm/quote/{wwid} and
 // /tpm/confirm/{wwid}.
@@ -100,7 +68,7 @@ func HandleTPM(w http.ResponseWriter, req *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		writeJSON(w, http.StatusOK, TPMNonceResponse{Nonce: nonce, TTL: int(nonceTTL / time.Second)})
+		writeJSON(w, http.StatusOK, tpm.NonceResponse{Nonce: nonce, TTL: int(nonceTTL / time.Second)})
 	case "tpm-quote":
 		handleTPMQuote(w, req, ctx)
 	case "tpm-confirm":
@@ -117,7 +85,7 @@ func handleTPMQuote(w http.ResponseWriter, req *http.Request, ctx *requestContex
 	var ev tpm.Evidence
 	if err := json.NewDecoder(http.MaxBytesReader(w, req.Body, maxEvidenceBytes)).Decode(&ev); err != nil {
 		wwlog.Denied("TPM evidence from %s: %s", id, err)
-		writeJSON(w, http.StatusBadRequest, TPMErrorResponse{Error: tpm.CodeBadEvidence})
+		writeJSON(w, http.StatusBadRequest, tpm.ErrorResponse{Error: tpm.CodeBadEvidence})
 		return
 	}
 	if !nonces.consume(id, ev.Nonce, now) {
@@ -157,7 +125,7 @@ func handleTPMQuote(w http.ResponseWriter, req *http.Request, ctx *requestContex
 	switch {
 	case err == nil:
 		wwlog.Info("TPM attestation for %s verified; issued a credential", id)
-		writeJSON(w, http.StatusOK, TPMQuoteResponse{Credential: credential})
+		writeJSON(w, http.StatusOK, tpm.QuoteResponse{Credential: credential})
 	case code == "":
 		wwlog.ErrorExc(err, "TPM attestation for "+id)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -165,12 +133,12 @@ func handleTPMQuote(w http.ResponseWriter, req *http.Request, ctx *requestContex
 		// The TPM or its baseline changed. The node must prove it holds the
 		// TPM before the change is recorded.
 		wwlog.Denied("TPM attestation for %s refused: %s; awaiting confirmation from the node", id, err)
-		writeJSON(w, http.StatusConflict, TPMQuoteResponse{Credential: credential, Error: code})
+		writeJSON(w, http.StatusConflict, tpm.QuoteResponse{Credential: credential, Error: code})
 	default:
 		wwlog.Denied("TPM attestation for %s failed: %s", id, err)
 		status.Sent, status.Security = strings.ToUpper(string(code)), "TPM-FAIL"
 		updateStatus(&status)
-		writeJSON(w, tpmHTTPStatus(code), TPMErrorResponse{Error: code})
+		writeJSON(w, tpmHTTPStatus(code), tpm.ErrorResponse{Error: code})
 	}
 }
 
@@ -206,7 +174,7 @@ func handleTPMConfirm(w http.ResponseWriter, ctx *requestContext) {
 	wwlog.Warn("TPM change on %s (%s) recorded as candidate %s; if expected: wwctl node tpm approve %s --candidate %s",
 		id, candidate.Reason, cid, id, cid)
 	updateStatus(&NodeStatus{NodeName: id, Stage: ctx.rinfo.stage, Ipaddr: ctx.rinfo.ipaddr, Sent: "CANDIDATE", Security: "TPM-FAIL"})
-	writeJSON(w, http.StatusOK, TPMConfirmResponse{Candidate: cid})
+	writeJSON(w, http.StatusOK, tpm.ConfirmResponse{Candidate: cid})
 }
 
 func tpmHTTPStatus(code tpm.Code) int {
@@ -222,7 +190,7 @@ func tpmHTTPStatus(code tpm.Code) int {
 
 // tpmAuthorized checks a TPM node's runtime secret. Without TLS it refuses
 // outright; otherwise a missing or wrong secret gets a 401 with
-// TPMRequiredHeader, which tells the node to attest and retry.
+// tpm.RequiredHeader, which tells the node to attest and retry.
 func tpmAuthorized(w http.ResponseWriter, req *http.Request, ctx *requestContext) bool {
 	id := ctx.remoteNode.Id()
 	status := NodeStatus{NodeName: id, Stage: ctx.rinfo.stage, Ipaddr: ctx.rinfo.ipaddr}
@@ -241,7 +209,7 @@ func tpmAuthorized(w http.ResponseWriter, req *http.Request, ctx *requestContext
 	}
 	if !ok {
 		wwlog.Verbose("%s has no valid TPM secret; requesting attestation", id)
-		w.Header().Set(TPMRequiredHeader, "required")
+		w.Header().Set(tpm.RequiredHeader, "required")
 		w.WriteHeader(http.StatusUnauthorized)
 		status.Sent = "TPM_REQUIRED"
 		updateStatus(&status)

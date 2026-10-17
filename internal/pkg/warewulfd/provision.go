@@ -25,7 +25,6 @@ type templateVars struct {
 	KernelVersion string
 	Root          string
 	TLS           bool
-	Tpm           bool
 	Tags          map[string]string
 	NetDevs       map[string]*node.NetDev
 }

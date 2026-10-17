@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 	warewulfconf "github.com/warewulf/warewulf/internal/pkg/config"
 	"github.com/warewulf/warewulf/internal/pkg/node"
+	"github.com/warewulf/warewulf/internal/pkg/tpm"
 	"github.com/warewulf/warewulf/internal/pkg/wwlog"
 	"github.com/warewulf/warewulf/internal/pkg/wwurl"
 )
@@ -178,10 +179,10 @@ func parseRequest(req *http.Request) (parsedRequest, error) {
 	if len(req.URL.Query()["assetkey"]) > 0 {
 		ret.assetkey = req.URL.Query()["assetkey"][0]
 	}
-	if h := req.Header.Get(TPMSecretHeader); h != "" {
+	if h := req.Header.Get(tpm.SecretHeader); h != "" {
 		secret, err := hex.DecodeString(h)
 		if err != nil {
-			return ret, errors.New("malformed " + TPMSecretHeader + " header")
+			return ret, errors.New("malformed " + tpm.SecretHeader + " header")
 		}
 		ret.tpmSecret = secret
 	}

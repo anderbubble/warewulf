@@ -1,13 +1,9 @@
 package wwclient
 
 import (
-	"bytes"
-	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -20,11 +16,10 @@ import (
 	"os/signal"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
-
-	"github.com/google/go-attestation/attest"
 
 	"github.com/coreos/go-systemd/daemon"
 	"github.com/google/uuid"
@@ -56,9 +51,7 @@ var (
 	webclient       *http.Client
 	WarewulfConfArg string
 
-	// TPM related flags
-	uploadQuoteFlag  bool
-	getChallengeFlag bool
+	attestFlag bool
 )
 
 func init() {
@@ -68,132 +61,13 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&WarewulfConfArg, "warewulfconf", "", "Set the warewulf configuration file")
 	rootCmd.AddCommand(overlaydiff.GetCommand())
 	rootCmd.PersistentFlags().StringVar(&wwid, "wwid", "", "Set wwid flag manually")
-	rootCmd.PersistentFlags().BoolVar(&uploadQuoteFlag, "upload-quote", false, "Upload TPM quote to the server")
-	rootCmd.PersistentFlags().BoolVar(&getChallengeFlag, "get-challenge", false, "Retrieve and decrypt TPM challenge from the server")
+	rootCmd.PersistentFlags().BoolVar(&attestFlag, "attest", false, "Attest with the node's TPM, save the runtime secret, and exit (for troubleshooting; with warewulf:secure, stop the wwclient service first, as both use the same source port)")
 }
 
 // GetRootCommand returns the root cobra.Command for the application.
 func GetRootCommand() *cobra.Command {
 	// Run cobra
 	return rootCmd
-}
-
-func loadOrCreateAK(t *attest.TPM) (*attest.AK, error) {
-	akBlobPath := "/warewulf/tpm/ak.blob"
-	if err := os.MkdirAll(filepath.Dir(akBlobPath), 0755); err != nil {
-		return nil, fmt.Errorf("creating state directory: %v", err)
-	}
-
-	if blob, err := os.ReadFile(akBlobPath); err == nil {
-		ak, err := t.LoadAK(blob)
-		if err == nil {
-			wwlog.Debug("Loaded existing AK from %s", akBlobPath)
-			return ak, nil
-		}
-		wwlog.Warn("Failed to load existing AK: %v", err)
-	}
-
-	wwlog.Verbose("Creating new AK")
-	ak, err := t.NewAK(nil)
-	if err != nil {
-		return nil, fmt.Errorf("creating AK: %v", err)
-	}
-
-	blob, err := ak.Marshal()
-	if err != nil {
-		wwlog.Warn("Failed to marshal AK: %v", err)
-	} else {
-		if err := os.WriteFile(akBlobPath, blob, 0600); err != nil {
-			wwlog.Warn("Failed to save AK: %v", err)
-		} else {
-			wwlog.Debug("Saved AK to %s", akBlobPath)
-		}
-	}
-
-	return ak, nil
-}
-
-func getAttestationData(id string) (*tpm.TpmUpload, error) {
-	// Open TPM
-	t, err := attest.OpenTPM(nil)
-	if err != nil {
-		return nil, fmt.Errorf("opening TPM: %v", err)
-	}
-	defer func() { _ = t.Close() }()
-
-	// Get EKs
-	eks, err := t.EKs()
-	if err != nil {
-		return nil, fmt.Errorf("getting EKs: %v", err)
-	}
-	if len(eks) == 0 {
-		return nil, fmt.Errorf("no EKs found")
-	}
-	ek := eks[0]
-
-	// Create AK
-	ak, err := loadOrCreateAK(t)
-	if err != nil {
-		return nil, fmt.Errorf("creating AK: %v", err)
-	}
-	defer func() { _ = ak.Close(t) }()
-
-	// Quote
-	nonce := make([]byte, 8)
-	rand.Read(nonce)
-
-	q, err := ak.Quote(t, nonce, attest.HashSHA256)
-	if err != nil {
-		return nil, fmt.Errorf("quoting: %v", err)
-	}
-
-	// Get PCRs
-	pcrs, err := t.PCRs(attest.HashSHA256)
-	if err != nil {
-		return nil, fmt.Errorf("reading PCRs: %v", err)
-	}
-
-	pcrMap := make(map[string]string)
-	for _, p := range pcrs {
-		pcrMap[fmt.Sprintf("%d", p.Index)] = fmt.Sprintf("%x", p.Digest)
-	}
-
-	// Event Log
-	eventLog, err := t.MeasurementLog()
-	if err != nil {
-		wwlog.Warn("failed to read event log: %v", err)
-	}
-
-	// EK Cert/Pub
-	var ekCertBytes []byte
-	if ek.Certificate != nil {
-		ekCertBytes = ek.Certificate.Raw
-	}
-
-	ekPubBytes, err := x509.MarshalPKIXPublicKey(ek.Public)
-	if err != nil {
-		return nil, fmt.Errorf("marshaling EK public: %v", err)
-	}
-
-	akParams := ak.AttestationParameters()
-	akPubBytes := akParams.Public
-
-	return &tpm.TpmUpload{
-		TpmData: tpm.TpmData{
-			EKCert:            base64.StdEncoding.EncodeToString(ekCertBytes),
-			EKPub:             base64.StdEncoding.EncodeToString(ekPubBytes),
-			AKPub:             base64.StdEncoding.EncodeToString(akPubBytes),
-			Quote:             base64.StdEncoding.EncodeToString(q.Quote),
-			Signature:         base64.StdEncoding.EncodeToString(q.Signature),
-			CreateData:        base64.StdEncoding.EncodeToString(akParams.CreateData),
-			CreateAttestation: base64.StdEncoding.EncodeToString(akParams.CreateAttestation),
-			CreateSignature:   base64.StdEncoding.EncodeToString(akParams.CreateSignature),
-			PCRs:              pcrMap,
-			Nonce:             base64.StdEncoding.EncodeToString(nonce),
-		},
-		EventLog: base64.StdEncoding.EncodeToString(eventLog),
-		ID:       id,
-	}, nil
 }
 
 func CobraRunE(cmd *cobra.Command, args []string) (err error) {
@@ -361,13 +235,15 @@ func CobraRunE(cmd *cobra.Command, args []string) (err error) {
 	if conf.Warewulf.UpdateInterval > 0 {
 		duration = conf.Warewulf.UpdateInterval
 	}
-	stopTimer := time.NewTimer(time.Duration(duration) * time.Second)
 	// listen on SIGHUP
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGINT)
 
 	// Add a channel to signal main loop to exit gracefully
 	exitChan := make(chan bool, 1)
+	// SIGHUP requests an update now; one pending request is remembered while
+	// an update runs.
+	hup := make(chan struct{}, 1)
 
 	// var finishedInitialSync bool = false
 	ipaddr := os.Getenv("WW_IPADDR")
@@ -386,114 +262,30 @@ func CobraRunE(cmd *cobra.Command, args []string) (err error) {
 		scheme = "https"
 	}
 
-	if uploadQuoteFlag || parseTPMFromCmdline(string(cmdline)) {
-		quote, err := getAttestationData(wwid)
-		if err != nil {
-			return fmt.Errorf("failed to get attestation data: %w", err)
-		}
-
-		jsonData, err := json.Marshal(quote)
-		if err != nil {
-			return fmt.Errorf("failed to marshal quote to JSON: %w", err)
-		}
-
-		postURL := &url.URL{
-			Scheme: scheme,
-			Host:   fmt.Sprintf("%s:%d", ipaddr, port),
-			Path:   "tpm-quote/",
-		}
-
-		q := postURL.Query()
-		q.Set("wwid", wwid)
-		postURL.RawQuery = q.Encode()
-
-		req, err := http.NewRequest("POST", postURL.String(), bytes.NewBuffer(jsonData))
-		if err != nil {
-			return fmt.Errorf("failed to create request: %w", err)
-		}
-		req.Header.Set("Content-Type", "application/json")
-
-		resp, err := webclient.Do(req)
-		if err != nil {
-			return fmt.Errorf("failed to upload quote: %w", err)
-		}
-		defer func() { _ = resp.Body.Close() }()
-
-		if resp.StatusCode != http.StatusOK {
-			return fmt.Errorf("failed to upload quote: server returned %s", resp.Status)
-		}
-
-		fmt.Println("TPM quote uploaded successfully")
-		if uploadQuoteFlag {
-			// manual run bail out
-			return nil
-		}
+	opts := updateOptions{
+		target:    target,
+		ipaddr:    ipaddr,
+		port:      port,
+		wwid:      wwid,
+		tag:       tag,
+		localUUID: localUUID,
+		scheme:    scheme,
 	}
-	var secret []byte
-	if getChallengeFlag || parseTPMFromCmdline(string(cmdline)) {
-		challengeURL := &url.URL{
-			Scheme: scheme,
-			Host:   fmt.Sprintf("%s:%d", ipaddr, port),
-			Path:   "tpm-challenge",
-		}
-		q := challengeURL.Query()
-		q.Set("wwid", wwid)
-		challengeURL.RawQuery = q.Encode()
+	secretPath := path.Join(conf.Paths.WWClientdir, "secret")
+	openTPM := openTPMAttestor(path.Join(conf.Paths.WWClientdir, "tpm", "ak.blob"))
 
-		resp, err := webclient.Get(challengeURL.String())
+	if attestFlag {
+		secret, err := attestTPM(webclient, opts, openTPM)
 		if err != nil {
-			return fmt.Errorf("failed to retrieve challenge: %w", err)
+			return fmt.Errorf("TPM attestation failed: %w", err)
 		}
-		defer func() { _ = resp.Body.Close() }()
-
-		if resp.StatusCode != http.StatusOK {
-			return fmt.Errorf("failed to retrieve challenge: server returned %s", resp.Status)
+		if err := saveSecret(secretPath, secret); err != nil {
+			return fmt.Errorf("saving TPM secret: %w", err)
 		}
-
-		var encryptedCredential attest.EncryptedCredential
-		err = json.NewDecoder(resp.Body).Decode(&encryptedCredential)
-		if err != nil {
-			return fmt.Errorf("failed to decode encrypted credential: %w", err)
-		}
-
-		t, err := attest.OpenTPM(nil)
-		if err != nil {
-			return fmt.Errorf("opening TPM: %v", err)
-		}
-		defer func() { _ = t.Close() }()
-
-		eks, err := t.EKs()
-		if err != nil {
-			return fmt.Errorf("getting EKs: %v", err)
-		}
-		if len(eks) == 0 {
-			return fmt.Errorf("no EKs found")
-		}
-
-		ak, err := loadOrCreateAK(t)
-		if err != nil {
-			return fmt.Errorf("creating AK: %v", err)
-		}
-		defer func() { _ = ak.Close(t) }()
-
-		secret, err = ak.ActivateCredential(t, encryptedCredential)
-		if err != nil {
-			return fmt.Errorf("failed to activate credential: %w", err)
-		}
-
-		hexSecret := hex.EncodeToString(secret)
-
-		if err := os.MkdirAll("/warewulf", 0755); err != nil {
-			wwlog.Warn("Failed to create /warewulf directory: %v", err)
-		} else if err := os.WriteFile("/warewulf/secret", []byte(hexSecret), 0600); err != nil {
-			wwlog.Warn("Failed to save secret to /warewulf/secret: %v", err)
-		}
-
-		if getChallengeFlag {
-			wwlog.Info("Decrypted secret: %s\n", hexSecret)
-			return nil
-		}
+		fmt.Printf("TPM attestation succeeded; runtime secret saved to %s\n", secretPath)
+		return nil
 	}
+	opts.secret = loadSecret(secretPath)
 
 	go func() {
 		for {
@@ -501,8 +293,10 @@ func CobraRunE(cmd *cobra.Command, args []string) (err error) {
 			switch sig {
 			case syscall.SIGHUP:
 				wwlog.Info("received signal: %s", sig)
-				stopTimer.Stop()
-				stopTimer.Reset(0)
+				select {
+				case hup <- struct{}{}:
+				default:
+				}
 			case syscall.SIGTERM, syscall.SIGINT:
 				wwlog.Info("terminating wwclient, %v", sig)
 				// Signal main loop to exit gracefully
@@ -512,18 +306,41 @@ func CobraRunE(cmd *cobra.Command, args []string) (err error) {
 		}
 	}()
 	finishedInitialSync := false
+	interval := time.Duration(duration) * time.Second
+	tpmRetry := tpmRetryMin
 
 	for {
-		if err := updateSystem(updateOptions{
-			target:    target,
-			ipaddr:    ipaddr,
-			port:      port,
-			wwid:      wwid,
-			tag:       tag,
-			localUUID: localUUID,
-			scheme:    scheme,
-			secret:    secret,
-		}); err != nil {
+		next := interval
+		err := updateSystem(opts)
+		if errors.Is(err, errTPMRequired) {
+			// The server wants proof of this boot from the TPM. Attest and
+			// retry right away; if that fails, back off.
+			opts.secret = nil
+			_ = os.Remove(secretPath)
+			secret, attestErr := attestTPM(webclient, opts, openTPM)
+			if attestErr == nil {
+				wwlog.Info("TPM attestation succeeded")
+				if err := saveSecret(secretPath, secret); err != nil {
+					wwlog.Warn("saving TPM secret: %s", err)
+				}
+				opts.secret = secret
+				tpmRetry = tpmRetryMin
+				err = updateSystem(opts)
+				if errors.Is(err, errTPMRequired) {
+					attestErr = errors.New("server refused the secret it issued")
+				}
+			}
+			if attestErr != nil {
+				wwlog.Error("TPM attestation failed: %s; retrying in %s", attestErr, tpmRetry)
+				if once {
+					return attestErr
+				}
+				next = tpmRetry
+				tpmRetry = min(2*tpmRetry, interval)
+				err = nil
+			}
+		}
+		if err != nil && !errors.Is(err, errTPMRequired) {
 			return err
 		}
 		if !finishedInitialSync {
@@ -538,15 +355,25 @@ func CobraRunE(cmd *cobra.Command, args []string) (err error) {
 			return nil
 		}
 
-		// Check for exit signal or timer
-		select {
-		case <-exitChan:
+		if waitNext(next, hup, exitChan) {
 			wwlog.Info("gracefully shutting down")
 			return nil
-		case <-stopTimer.C:
-			stopTimer.Reset(time.Duration(duration) * time.Second)
 		}
 	}
+}
+
+// waitNext waits for next to elapse or an update request on hup, and reports
+// whether exit was signalled instead.
+func waitNext(next time.Duration, hup <-chan struct{}, exit <-chan bool) bool {
+	timer := time.NewTimer(next)
+	defer timer.Stop()
+	select {
+	case <-exit:
+		return true
+	case <-hup:
+	case <-timer.C:
+	}
+	return false
 }
 
 // parseWWIDFromCmdline extracts the wwid parameter from kernel command line
@@ -566,28 +393,6 @@ func parseWWIDFromCmdline(cmdline string) (string, error) {
 	return "", fmt.Errorf("wwid parameter not found in kernel command line")
 }
 
-// parseTPMFromCmdline extracts the tpm parameter from kernel command line
-func parseTPMFromCmdline(cmdline string) bool {
-	params := strings.Fields(cmdline)
-	ret := false
-
-	for _, param := range params {
-		if strings.EqualFold(param, "tpm") {
-			ret = true
-		} else if strings.HasPrefix(strings.ToLower(param), "tpm=") {
-			val := strings.TrimPrefix(strings.ToLower(param), "tpm=")
-			switch val {
-			case "1", "true", "yes", "on":
-				ret = true
-			case "0", "false", "no", "off":
-				ret = false
-			}
-		}
-	}
-
-	return ret
-}
-
 type updateOptions struct {
 	target    string
 	ipaddr    string
@@ -599,28 +404,48 @@ type updateOptions struct {
 	secret    []byte
 }
 
+// tpmRetryMin is how long to wait after a failed TPM attestation; it doubles
+// with each failure, up to the update interval.
+const tpmRetryMin = 30 * time.Second
+
+// statusRetryDelay is how long to wait after the server refuses the runtime
+// overlay for a reason other than TPM attestation.
+var statusRetryDelay = 60 * time.Second
+
+// url returns the server URL for path, with the node's identifying query
+// parameters.
+func (o updateOptions) url(path string, extra ...[2]string) string {
+	values := url.Values{}
+	if o.tag != "" {
+		values.Set("assetkey", o.tag)
+	}
+	values.Set("uuid", o.localUUID.String())
+	for _, kv := range extra {
+		values.Set(kv[0], kv[1])
+	}
+	u := url.URL{
+		Scheme:   o.scheme,
+		Host:     net.JoinHostPort(o.ipaddr, strconv.Itoa(o.port)),
+		Path:     path,
+		RawQuery: values.Encode(),
+	}
+	return u.String()
+}
+
 func updateSystem(options updateOptions) error {
 	var resp *http.Response
 	counter := 0
 	for {
-		var err error
-		values := &url.Values{}
-		if options.tag != "" {
-			values.Set("assetkey", options.tag)
+		getURL := options.url("runtime/"+options.wwid, [2]string{"compress", "gz"})
+		req, err := http.NewRequest(http.MethodGet, getURL, nil)
+		if err != nil {
+			return err
 		}
 		if len(options.secret) != 0 {
-			values.Set("tpmsecret", string(options.secret))
+			req.Header.Set(tpm.SecretHeader, hex.EncodeToString(options.secret))
 		}
-		values.Set("uuid", options.localUUID.String())
-		values.Set("compress", "gz")
-		getURL := &url.URL{
-			Scheme:   options.scheme,
-			Host:     fmt.Sprintf("%s:%d", options.ipaddr, options.port),
-			Path:     fmt.Sprintf("runtime/%s", options.wwid),
-			RawQuery: values.Encode(),
-		}
-		wwlog.Debug("making request: %s", getURL)
-		resp, err = webclient.Get(getURL.String())
+		wwlog.Debug("making request: %s", wwurl.SanitizeURL(getURL))
+		resp, err = webclient.Do(req)
 		if err == nil {
 			break
 		} else {
@@ -643,9 +468,12 @@ func updateSystem(options updateOptions) error {
 		time.Sleep(1000 * time.Millisecond)
 	}
 	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode == http.StatusUnauthorized && resp.Header.Get(tpm.RequiredHeader) != "" {
+		return errTPMRequired
+	}
 	if resp.StatusCode != 200 {
 		wwlog.Warn("not applying runtime overlay: got status code: %d", resp.StatusCode)
-		time.Sleep(60000 * time.Millisecond)
+		time.Sleep(statusRetryDelay)
 		return nil
 	}
 

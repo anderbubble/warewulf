@@ -120,7 +120,7 @@ func getNonce(t *testing.T, node string) []byte {
 	t.Helper()
 	res := do(t, HandleTPM, tpmRequest{url: "/tpm/nonce/" + node})
 	require.Equal(t, http.StatusOK, res.StatusCode)
-	var body TPMNonceResponse
+	var body tpm.NonceResponse
 	require.NoError(t, json.NewDecoder(res.Body).Decode(&body))
 	assert.Len(t, body.Nonce, nonceSize)
 	return body.Nonce
@@ -142,7 +142,7 @@ func postEvidence(t *testing.T, ev *tpm.Evidence) *http.Response {
 
 func confirm(t *testing.T, secret []byte) *http.Response {
 	t.Helper()
-	return do(t, HandleTPM, tpmRequest{url: "/tpm/confirm/" + tpmNode, header: map[string]string{TPMSecretHeader: hex.EncodeToString(secret)}})
+	return do(t, HandleTPM, tpmRequest{url: "/tpm/confirm/" + tpmNode, header: map[string]string{tpm.SecretHeader: hex.EncodeToString(secret)}})
 }
 
 func loadState(t *testing.T) *tpm.State {
@@ -156,14 +156,14 @@ func runtime(t *testing.T, secret []byte) *http.Response {
 	t.Helper()
 	header := map[string]string{}
 	if secret != nil {
-		header[TPMSecretHeader] = hex.EncodeToString(secret)
+		header[tpm.SecretHeader] = hex.EncodeToString(secret)
 	}
 	return do(t, HandleRuntimeOverlay, tpmRequest{method: http.MethodGet, url: "/runtime/" + tpmNode, header: header})
 }
 
 func errorCode(t *testing.T, res *http.Response) tpm.Code {
 	t.Helper()
-	var body TPMErrorResponse
+	var body tpm.ErrorResponse
 	require.NoError(t, json.NewDecoder(res.Body).Decode(&body))
 	return body.Error
 }
@@ -173,12 +173,12 @@ func TestTPMAttestation(t *testing.T) {
 
 	res := runtime(t, nil)
 	assert.Equal(t, http.StatusUnauthorized, res.StatusCode, "a TPM node without a secret is refused")
-	assert.Equal(t, "required", res.Header.Get(TPMRequiredHeader), "and told to attest")
+	assert.Equal(t, "required", res.Header.Get(tpm.RequiredHeader), "and told to attest")
 
 	f := bootTPM(t)
 	res = postQuote(t, f, getNonce(t, tpmNode))
 	require.Equal(t, http.StatusOK, res.StatusCode)
-	var body TPMQuoteResponse
+	var body tpm.QuoteResponse
 	require.NoError(t, json.NewDecoder(res.Body).Decode(&body))
 	assert.NotNil(t, body.Credential)
 	require.Len(t, *secrets, 1)
@@ -194,7 +194,7 @@ func TestTPMAttestation(t *testing.T) {
 
 	res = runtime(t, []byte("wrong"))
 	assert.Equal(t, http.StatusUnauthorized, res.StatusCode)
-	assert.Equal(t, "required", res.Header.Get(TPMRequiredHeader))
+	assert.Equal(t, "required", res.Header.Get(tpm.RequiredHeader))
 
 	// Another attestation issues a new secret without disturbing the one in
 	// use; the node's secret is replaced only when the new one is used.
@@ -262,7 +262,7 @@ func TestTPMChange(t *testing.T) {
 	f.Extend(0, 0x80000008, []byte("firmware update"))
 	res := postQuote(t, f, getNonce(t, tpmNode))
 	assert.Equal(t, http.StatusConflict, res.StatusCode)
-	var body TPMQuoteResponse
+	var body tpm.QuoteResponse
 	require.NoError(t, json.NewDecoder(res.Body).Decode(&body))
 	assert.Equal(t, tpm.CodeBaselineChanged, body.Error)
 	assert.NotNil(t, body.Credential, "a change gets a credential, to prove the node holds the TPM")
@@ -277,7 +277,7 @@ func TestTPMChange(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, confirm(t, []byte("wrong")).StatusCode)
 	res = confirm(t, changed)
 	require.Equal(t, http.StatusOK, res.StatusCode)
-	var confirmed TPMConfirmResponse
+	var confirmed tpm.ConfirmResponse
 	require.NoError(t, json.NewDecoder(res.Body).Decode(&confirmed))
 	st := loadState(t)
 	require.NotNil(t, st.Candidate)
@@ -337,7 +337,7 @@ func TestTPMRouteAccess(t *testing.T) {
 
 	res := do(t, HandleRuntimeOverlay, tpmRequest{method: http.MethodGet, url: "/runtime/" + tpmNode, plainHTTP: true})
 	assert.Equal(t, http.StatusForbidden, res.StatusCode, "a TPM node's runtime overlay is refused without TLS")
-	assert.Empty(t, res.Header.Get(TPMRequiredHeader))
+	assert.Empty(t, res.Header.Get(tpm.RequiredHeader))
 
 	res = do(t, HandleRuntimeOverlay, tpmRequest{method: http.MethodGet, url: "/runtime/" + plainNode, plainHTTP: true})
 	assert.Equal(t, http.StatusOK, res.StatusCode, "nodes without TPM are unaffected")

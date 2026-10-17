@@ -2,6 +2,7 @@ package wwclient
 
 import (
 	"testing"
+	"time"
 )
 
 func TestParseWWIDFromCmdline(t *testing.T) {
@@ -31,43 +32,6 @@ func TestParseWWIDFromCmdline(t *testing.T) {
 	}
 }
 
-func TestParseTPMFromCmdline(t *testing.T) {
-	tests := []struct {
-		cmdline  string
-		expected bool
-	}{
-		{"tpm", true},
-		{"TPM", true},
-		{"tpm=1", true},
-		{"tpm=true", true},
-		{"TPM=true", true},
-		{"tpm=yes", true},
-		{"tpm=on", true},
-		{"tpm=0", false},
-		{"tpm=false", false},
-		{"TPM=false", false},
-		{"tpm=no", false},
-		{"tpm=off", false},
-		{"foo tpm bar", true},
-		{"foo tpm=1 bar", true},
-		{"foo tpm=0 bar", false},
-		{"tpm=1 tpm=0", false}, // last one wins
-		{"tpm=0 tpm=1", true},  // last one wins
-		{"", false},
-		{"foo bar", false},
-		{"tpm_extra", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.cmdline, func(t *testing.T) {
-			actual := parseTPMFromCmdline(tt.cmdline)
-			if actual != tt.expected {
-				t.Errorf("parseTPMFromCmdline(%q) = %v; expected %v", tt.cmdline, actual, tt.expected)
-			}
-		})
-	}
-}
-
 func TestWWIDFlag(t *testing.T) {
 	savedWWID, savedConf := wwid, WarewulfConfArg
 	defer func() { wwid, WarewulfConfArg = savedWWID, savedConf }()
@@ -80,5 +44,33 @@ func TestWWIDFlag(t *testing.T) {
 	}
 	if WarewulfConfArg != savedConf {
 		t.Errorf("--wwid changed WarewulfConfArg to %q", WarewulfConfArg)
+	}
+}
+
+func TestWaitNext(t *testing.T) {
+	hup := make(chan struct{}, 1)
+	exit := make(chan bool, 1)
+
+	// A SIGHUP that arrived during an update is not lost.
+	hup <- struct{}{}
+	start := time.Now()
+	if waitNext(time.Hour, hup, exit) {
+		t.Error("waitNext reported exit for a SIGHUP")
+	}
+	if time.Since(start) > time.Second {
+		t.Error("a pending SIGHUP did not end the wait")
+	}
+
+	exit <- true
+	if !waitNext(time.Hour, hup, exit) {
+		t.Error("waitNext did not report exit")
+	}
+
+	start = time.Now()
+	if waitNext(10*time.Millisecond, hup, exit) {
+		t.Error("waitNext reported exit for the timer")
+	}
+	if time.Since(start) < 10*time.Millisecond {
+		t.Error("waitNext returned before the timer")
 	}
 }
