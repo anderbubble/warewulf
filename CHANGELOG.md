@@ -8,12 +8,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Added
 
-- TPM based node attestation:
-  - Added `wwctl node tpm` command group (`list`, `check`, `verify`, `reset`) for managing node TPM state. #2136
-  - Added automatic TPM quote generation and challenge retrieval to `wwclient` during node boot. #2136
-  - Added `/tpm-quote/` and `/tpm-challenge` routes to `warewulfd` for TPM attestation. #2136
-  - Added JSON output support to `wwctl node tpm list` which includes the activation secret.
-  - `wwclient` now saves the decrypted secret to `/warewulf/secret` on the node.
+- TPM attestation of nodes. With `--tpm=true` on a node or profile, the runtime
+  overlay is released only to the enrolled machine, after it proves with its TPM
+  that it booted the kernel and images the server sent. Requires TLS and GRUB
+  boot. See the TPM section of the user guide. #2136
+  - `wwctl node tpm` (`list`, `verify`, `approve`, `reset`) manages
+    TPM enrollment and attestation.
+  - `wwclient` attests automatically when the server requests it, and
+    `wwclient --attest` runs an attestation by hand.
+  - New `warewulfd` routes `/tpm/nonce/{wwid}`, `/tpm/quote/{wwid}` and
+    `/tpm/confirm/{wwid}`.
+  - `wwctl node status` shows how each node's last request was authenticated
+    (`TPM`, `ASSET`, or `TPM-FAIL`).
+  - `wwctl clean` removes the TPM state of deleted nodes.
+- `wwclient --wwid` sets the node's wwid when the kernel command line doesn't
+  provide one.
 - `wwctl node set` and `wwctl profile set` now display a per-field
   before/after diff of the changes they are about to apply before prompting
   for confirmation. Nodes (or profiles) receiving identical changes are
@@ -42,6 +51,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ### Changed
 
+- `wwclient` no longer exits when `/proc/cmdline` can't be read.
 - `wwctl overlay show --render` now reports an error for an undefined node
   name, rather than silently rendering the template as for the Warewulf
   server.

@@ -137,27 +137,61 @@ When TLS is enabled in ``warewulf.conf``, this route requires that the request
 arrive over HTTPS. Plain-HTTP requests are rejected with ``403 Forbidden``. The
 HTTPS listener port is configured with ``warewulf:tls port``.
 
+For a node with TPM attestation enabled, the request must carry the node's
+runtime secret in the ``X-Warewulf-TPM-Secret`` header. Without a valid secret,
+the server responds ``401 Unauthorized`` with ``X-Warewulf-TPM: required``,
+which tells ``wwclient`` to attest through ``/tpm/nonce`` and ``/tpm/quote``.
+Without TLS, such a node's runtime overlay is refused with ``403 Forbidden``.
+
 **Query parameters:** ``assetkey``, ``uuid``, ``compress``
 
-``/tpm-quote/``
----------------
+``/tpm/nonce/{wwid}``
+---------------------
 
-Receives and stores a TPM quote and event log uploaded by a node during boot.
-This route allows a cluster node to securely authenticate itself and verify its boot
-integrity. The quote is verified during the subsequent challenge request.
+Issues a random, single-use nonce for a TPM quote by the node identified by
+``{wwid}``. The nonce expires after 60 seconds. Only ``POST`` is accepted. See
+:ref:`TPM <tpm>`.
 
-**Query parameters:** ``wwid``
+This route, ``/tpm/quote/{wwid}`` and ``/tpm/confirm/{wwid}`` require HTTPS, a node with TPM
+attestation enabled (``--tpm=true``), the node's asset key if one is set, and,
+when ``warewulf:secure`` is enabled, a privileged source port.
 
-``/tpm-challenge``
-------------------
+**Query parameters:** ``wwid`` (instead of ``{wwid}``), ``assetkey``, ``uuid``
 
-Generates and serves a Credential Activation Challenge for the node identified
-by ``wwid``. The server first verifies the node's previously uploaded TPM quote,
-event log, and GRUB measurements. If verification succeeds, the server returns an
-encrypted challenge that only the node's specific TPM can decrypt. This challenge
-is used by the node to securely unlock its runtime overlay.
+``/tpm/quote/{wwid}``
+---------------------
 
-**Query parameters:** ``wwid``
+Accepts a node's TPM attestation evidence (a quote over a nonce from
+``/tpm/nonce``, its event log, and its endorsement and attestation keys) as
+JSON in a ``POST`` body. The server verifies that the quote is fresh and from
+a genuine TPM key, that the event log reproduces it, that every file GRUB
+measured was sent by this server, and that the TPM and its firmware baseline
+match the node's enrollment. If so, it responds with a credential that only the
+node's TPM can decrypt; the secret inside unlocks the node's runtime overlay.
+For a node that isn't enrolled yet, using that secret also completes its
+enrollment.
+
+If the TPM or its baseline differs from the enrollment, the response is ``409``
+with the reason and a credential, for example
+``{"error": "baseline_changed", "credential": {...}}``. Nothing is recorded until
+the node proves it holds the TPM by presenting the decrypted secret at
+``/tpm/confirm/{wwid}``. Other rejections return ``400`` or ``403`` with a JSON
+body naming the reason, for example ``{"error": "boot_files_unknown"}``. See
+:ref:`TPM <tpm>` for the reasons.
+
+**Query parameters:** ``wwid`` (instead of ``{wwid}``), ``assetkey``, ``uuid``
+
+``/tpm/confirm/{wwid}``
+-----------------------
+
+Records a TPM change reported by a ``409`` from ``/tpm/quote`` as a candidate
+for an administrator to approve. The node sends the secret it decrypted from
+that response's credential in the ``X-Warewulf-TPM-Secret`` header, proving
+the attestation key that quoted the change is in the TPM holding the claimed
+endorsement key. Responds ``200 {"candidate": "<ID>"}``, or ``401`` if the
+secret doesn't match. Only ``POST`` is accepted.
+
+**Query parameters:** ``wwid`` (instead of ``{wwid}``), ``assetkey``, ``uuid``
 
 ``/efiboot/{file}``
 -------------------

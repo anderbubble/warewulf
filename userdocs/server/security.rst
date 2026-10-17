@@ -31,10 +31,11 @@ There are multiple ways to secure the Warewulf provisioning process:
   on the Warewulf server (e.g., via ``wwctl node set --assetkey "..."``), the
   Warewulf server will only respond to requests with a matching asset tag.
 
-* Warewulf can utilize a node's Trusted Platform Module (TPM) to securely provision and
-  authenticate nodes, verifying the node's boot process and system image before delivering
-  the protected runtime overlay. This requires GRUB booting to be enabled. When both an Asset Key and TPM are configured, TPM
-  authentication overrides the Asset Key. See :ref:`TPM <tpm>` for more information.
+* Warewulf can use a node's Trusted Platform Module (TPM) to release the
+  runtime overlay only to the enrolled machine, and only after it proves it
+  booted the kernel and images the server sent. This requires TLS and GRUB
+  boot. It is in addition to the asset key, which is still checked. See
+  :ref:`TPM <tpm>` for more information.
 
 * If the Warewulf server is configured with ``warewulf:secure: true``, then it
   will only provide the runtime overlay to a ``wwclient`` communicating from a
