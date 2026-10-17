@@ -4,9 +4,7 @@ import (
 	"encoding/gob"
 	"net"
 
-	warewulfconf "github.com/warewulf/warewulf/internal/pkg/config"
 	"github.com/warewulf/warewulf/internal/pkg/util"
-	"github.com/warewulf/warewulf/internal/pkg/wwlog"
 	"github.com/warewulf/warewulf/internal/pkg/wwtype"
 )
 
@@ -53,7 +51,7 @@ type Profile struct {
 	Ipxe           string                 `yaml:"ipxe template,omitempty"    json:"ipxe template,omitempty"    lopt:"ipxe"                         comment:"the iPXE template name"`
 	RuntimeOverlay []string               `yaml:"runtime overlay,omitempty"  json:"runtime overlay,omitempty"  lopt:"runtime-overlays"    sopt:"R" comment:"the runtime overlay"`
 	SystemOverlay  []string               `yaml:"system overlay,omitempty"   json:"system overlay,omitempty"   lopt:"system-overlays"     sopt:"O" comment:"the system overlay"`
-	Tpm            *bool                  `yaml:"tpm,omitempty"              json:"tpm,omitempty"               lopt:"tpm" comment:"Enable check of the downloaded images using tpm"`
+	TpmP           *bool                  `yaml:"tpm,omitempty"              json:"tpm,omitempty"              lopt:"tpm"                          comment:"require TPM attestation before serving the runtime overlay" name:"Tpm"`
 	Kernel         *KernelConf            `yaml:"kernel,omitempty"           json:"kernel,omitempty"`
 	Ipmi           *IpmiConf              `yaml:"ipmi,omitempty"             json:"ipmi,omitempty"`
 	Init           string                 `yaml:"init,omitempty"             json:"init,omitempty"             lopt:"init"                sopt:"i" comment:"the init process to boot the image"`
@@ -170,12 +168,7 @@ func (n *Node) GetId() string {
 	return n.id
 }
 
-// return tpm status of node, also checks if https is set
-func (n *Node) TpmEnabled() bool {
-	conf := warewulfconf.Get()
-	if !conf.Warewulf.TLSEnabled() {
-		wwlog.Warn("node %s requests TPM but https is disabled", n.GetId())
-		return false
-	}
-	return util.BoolP(n.Tpm)
+// Tpm reports whether the node requires TPM attestation.
+func (n *Node) Tpm() bool {
+	return util.BoolP(n.TpmP)
 }
