@@ -136,16 +136,17 @@ func parseRequest(req *http.Request) (parsedRequest, error) {
 	}
 
 	if len(path_parts) > 2 {
-		if ret.stage == "efiboot" {
+		switch ret.stage {
+		case "efiboot":
 			// /efiboot/{file}: no wwid in path; identified via ARP
 			ret.efifile = strings.Join(path_parts[2:], "/")
-		} else if ret.stage == "tpm" {
+		case "tpm":
 			// /tpm/{op}[/wwid]
 			ret.stage = "tpm-" + path_parts[2]
 			if len(path_parts) > 3 {
 				ret.hwaddr = parseHwaddr(path_parts[3])
 			}
-		} else {
+		default:
 			ret.hwaddr = parseHwaddr(path_parts[2])
 		}
 	}
